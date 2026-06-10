@@ -44,8 +44,8 @@ const EXPRESSIONS = {
 
 const CHARACTERS = {
   kon: {
-    displayName: "こん",
-    fullName: "ナンシキ村のこん",
+    displayName: "コン",
+    fullName: "ナンシキ村のコン",
     expressions: EXPRESSIONS
   },
   lee: {
@@ -77,7 +77,7 @@ function readStoredJson(key, fallback) {
 }
 
 const store = {
-  name: localStorage.getItem("buddy-name") || "こん",
+  name: localStorage.getItem("buddy-name") || "コン",
   character: localStorage.getItem("buddy-character") || "kon",
   color: localStorage.getItem("buddy-color") || "mint",
   spriteData: localStorage.getItem("buddy-sprite-data") || DEFAULT_SPRITE_SRC,
@@ -89,6 +89,8 @@ const store = {
   matchPrep: readStoredJson("buddy-match-prep", null),
   score: readStoredJson("buddy-score", null)
 };
+
+if (store.name === "こん") store.name = "コン";
 
 const palettes = {
   mint: { cap: "#ff514d", side: "#17284e", bill: "#78e0df", cheek: "#ff65bd", accent: "#40c7bd" },
@@ -2425,7 +2427,7 @@ function roundRect(x, y, w, h, r, fill, stroke) {
 }
 
 petNameInput.addEventListener("input", () => {
-  store.name = petNameInput.value.trim() || "こん";
+  store.name = petNameInput.value.trim() || "コン";
   saveStore();
   petSay(`${store.name}って呼んでね。今日も一緒にがんばろう。`, "happy");
 });
