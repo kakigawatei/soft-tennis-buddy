@@ -1182,6 +1182,32 @@ input:focus, select:focus, textarea:focus {
   pointer-events: none;
 }
 
+.rally-wall {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  background: linear-gradient(90deg, #93a59b, #c2cfc4);
+  border-right: 3px solid rgba(255,255,255,.8);
+  box-shadow: 2px 0 8px rgba(24,48,76,.18);
+}
+
+.rally-wall::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 55%;
+  height: 3px;
+  background: rgba(255,255,255,.9);
+}
+
+.rally-wall.hidden {
+  display: none;
+}
+
 .rally-racket {
   position: absolute;
   z-index: 4;
