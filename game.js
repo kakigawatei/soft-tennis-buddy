@@ -1166,6 +1166,125 @@ function applyPetTransform() {
   spritePet.style.transform = `translate(-50%, -50%) rotate(${petPhysics.rotation}rad) scale(${petPhysics.scaleX}, ${petPhysics.scaleY})`;
 }
 
+const rallyButton = document.querySelector("#rallyButton");
+const rallyBall = document.querySelector("#rallyBall");
+const rallyScoreEl = document.querySelector("#rallyScore");
+const rally = {
+  active: false,
+  score: 0,
+  best: Number(localStorage.getItem("buddy-rally-best")) || 0,
+  x: 0, y: 0, vx: 0, vy: 0,
+  raf: 0,
+  last: 0
+};
+
+function rallyBallRadius() {
+  return 17;
+}
+
+function launchRallyBall(fromHit = false) {
+  const r = rallyBallRadius();
+  if (!fromHit) {
+    rally.x = Math.random() < .5 ? r + 8 : W - r - 8;
+    rally.y = H * .35;
+  }
+  const speedUp = Math.min(rally.score * 14, 200);
+  const dir = fromHit ? (Math.random() < .5 ? -1 : 1) : (rally.x < W / 2 ? 1 : -1);
+  rally.vx = dir * (110 + speedUp + Math.random() * 50);
+  rally.vy = -(230 + speedUp * .8 + Math.random() * 60);
+  applyRallyBall();
+}
+
+function applyRallyBall() {
+  rallyBall.style.left = `${rally.x}px`;
+  rallyBall.style.top = `${rally.y}px`;
+}
+
+function updateRallyScore() {
+  rallyScoreEl.textContent = `ラリー ${rally.score}回${rally.best ? ` / ベスト ${rally.best}` : ""}`;
+}
+
+function rallyLoop(now) {
+  if (!rally.active) return;
+  const dt = Math.min(32, now - rally.last) / 1000;
+  rally.last = now;
+  const r = rallyBallRadius();
+  rally.vy += 760 * dt;
+  rally.x += rally.vx * dt;
+  rally.y += rally.vy * dt;
+  if (rally.x < r) {
+    rally.x = r;
+    rally.vx = Math.abs(rally.vx);
+  } else if (rally.x > W - r) {
+    rally.x = W - r;
+    rally.vx = -Math.abs(rally.vx);
+  }
+  if (rally.y < r + 4) {
+    rally.y = r + 4;
+    rally.vy = Math.abs(rally.vy) * .8;
+  }
+  if (rally.y > H - r + 6) {
+    endRally(true);
+    return;
+  }
+  applyRallyBall();
+  rally.raf = requestAnimationFrame(rallyLoop);
+}
+
+function startRally() {
+  if (rally.active) {
+    endRally(false);
+    return;
+  }
+  rally.active = true;
+  rally.score = 0;
+  rallyButton.textContent = "やめる";
+  rallyBall.classList.remove("hidden");
+  rallyScoreEl.classList.remove("hidden");
+  updateRallyScore();
+  petSay(store.character === "lee" ? "ラリー勝負！ボールを落とさずタッチし続けよう！" : "ラリーしよう。ボールが落ちる前にタッチしてね。", "focus");
+  launchRallyBall(false);
+  rally.last = performance.now();
+  rally.raf = requestAnimationFrame(rallyLoop);
+}
+
+function hitRallyBall(event) {
+  if (!rally.active) return;
+  event.preventDefault();
+  event.stopPropagation();
+  rally.score += 1;
+  updateRallyScore();
+  launchRallyBall(true);
+  setExpression(rally.score % 5 === 0 ? "heart" : "happy", 600);
+  if (rally.score === 10) petSay(store.character === "lee" ? "10回連続！すごいリズム！" : "10回続いたね。いいリズムだよ。", "happy");
+}
+
+function endRally(missed) {
+  cancelAnimationFrame(rally.raf);
+  rally.active = false;
+  rallyButton.textContent = "ラリー";
+  rallyBall.classList.add("hidden");
+  rallyScoreEl.classList.add("hidden");
+  const score = rally.score;
+  const isBest = score > rally.best;
+  if (isBest) {
+    rally.best = score;
+    localStorage.setItem("buddy-rally-best", String(score));
+  }
+  if (!missed) {
+    petSay("ラリーはまた今度ね。いつでも誘ってよ。", "calm");
+    return;
+  }
+  if (score > 0) addBondXp(Math.min(score, 12), `ラリー${score}回続けた`, "happy", false);
+  if (isBest && score > 0) {
+    petSay(store.character === "lee" ? `ベスト更新、${score}回！ナイスラリー！` : `ベスト更新だよ、${score}回。集中が続いてたね。`, "heart");
+  } else if (score >= 5) {
+    petSay(store.character === "lee" ? `${score}回ラリー！いい反応だった！` : `${score}回続いたね。目がボールに慣れてきたよ。`, "happy");
+  } else {
+    petSay(store.character === "lee" ? "おしい！もう1回いこう、次は続くよ！" : "おしいね。ボールの落ちる場所を予想してみよう。", "surprised");
+  }
+}
+
 function bouncePetFromPointer(event) {
   if (!spritePet) return;
   initPetPhysics();
@@ -2390,8 +2509,12 @@ spritePet?.addEventListener("pointercancel", () => {
 
 document.querySelector(".sky-card")?.addEventListener("pointerdown", event => {
   if (event.target === spritePet || event.target.closest("button")) return;
+  if (event.target === rallyBall) return;
   bouncePetFromPointer(event);
 });
+
+rallyButton?.addEventListener("click", startRally);
+rallyBall?.addEventListener("pointerdown", hitRallyBall);
 
 settingsButton.addEventListener("click", openSettings);
 document.querySelectorAll("[data-close-settings]").forEach(button => {

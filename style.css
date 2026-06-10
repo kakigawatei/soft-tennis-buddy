@@ -1154,6 +1154,64 @@ input:focus, select:focus, textarea:focus {
   line-height: 1.6;
 }
 
+.rally-button {
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  bottom: 18px;
+  padding: 10px 15px 11px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #49aee8);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 5px 0 rgba(20,128,150,.45);
+}
+
+.rally-ball {
+  position: absolute;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 32% 30%, #ffffff 0 38%, #f1f6e8 60%, #dde8cf 100%);
+  border: 2px solid rgba(124,150,108,.5);
+  box-shadow: 0 4px 8px rgba(24,48,76,.22), inset -3px -4px 6px rgba(124,150,108,.25);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.rally-ball::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(124,150,108,.45);
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.rally-ball.hidden,
+.rally-score.hidden {
+  display: none;
+}
+
+.rally-score {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 14px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.85);
+  color: #17284e;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 3px 8px rgba(24,48,76,.14);
+}
+
 .result-stats {
   margin: 0 0 12px;
 }
