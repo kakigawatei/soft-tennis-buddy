@@ -1174,8 +1174,8 @@ const rallyRacket = document.querySelector("#rallyRacket");
 const rallyScoreEl = document.querySelector("#rallyScore");
 const skyCard = document.querySelector(".sky-card");
 const rallyWall = document.querySelector("#rallyWall");
-const RALLY_RACKET_W = 88;
-const RALLY_RACKET_H = 16;
+const RALLY_RACKET_W = 30;
+const RALLY_RACKET_H = 96;
 const RALLY_WALL_W = 14;
 const rally = {
   active: false,
@@ -1185,7 +1185,9 @@ const rally = {
   bounces: 0,
   toWall: false,
   racketX: 0,
+  racketY: 0,
   racketTargetX: 0,
+  racketTargetY: 0,
   racketVx: 0,
   steering: false,
   raf: 0,
@@ -1196,8 +1198,16 @@ function rallyBallRadius() {
   return 17;
 }
 
-function rallyRacketY() {
-  return H - 30;
+function rallyRacketHomeY() {
+  return H - 24 - RALLY_RACKET_H / 2;
+}
+
+function rallyHeadRadius() {
+  return 26;
+}
+
+function rallyHeadCenter() {
+  return { x: rally.racketX, y: rally.racketY - RALLY_RACKET_H * .26 };
 }
 
 function rallyRacketMinX() {
@@ -1222,15 +1232,17 @@ function applyRallyBall() {
 
 function applyRallyRacket() {
   rallyRacket.style.left = `${rally.racketX}px`;
-  rallyRacket.style.top = `${rallyRacketY()}px`;
-  const tilt = Math.max(-.28, Math.min(.28, rally.racketVx / 1400));
-  rallyRacket.style.transform = `translate(-50%, -50%) rotate(${tilt}rad)`;
+  rallyRacket.style.top = `${rally.racketY}px`;
+  const tilt = Math.max(-.16, Math.min(.16, rally.racketVx / 2200));
+  rallyRacket.style.transform = `translate(-50%, -50%) rotate(${-.1 + tilt}rad)`;
 }
 
 function steerRacket(event) {
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
   rally.racketTargetX = Math.max(rallyRacketMinX(), Math.min(W - RALLY_RACKET_W / 2, x));
+  rally.racketTargetY = Math.max(40, Math.min(H - 24, y));
 }
 
 function updateRallyScore() {
@@ -1242,7 +1254,7 @@ function reboundOffWall() {
   const ramp = Math.min(rally.score / 15, 1);
   const late = Math.max(0, Math.min((rally.score - 15) / 20, 1));
   const ceiling = r + 4;
-  const usable = Math.max(80, rallyRacketY() - RALLY_RACKET_H / 2 - r - ceiling);
+  const usable = Math.max(80, rallyRacketHomeY() - r - ceiling);
   const apex = usable * (.35 + Math.random() * (.35 + late * .2));
   rally.vy = -Math.sqrt(2 * 580 * apex);
   rally.vx = 150 + ramp * 100 + late * 60 + Math.random() * (40 + late * 60);
@@ -1256,7 +1268,9 @@ function rallyLoop(now) {
   rally.last = now;
   const r = rallyBallRadius();
   const prevRacketX = rally.racketX;
-  rally.racketX += (rally.racketTargetX - rally.racketX) * Math.min(1, dt * 24);
+  const follow = Math.min(1, dt * 24);
+  rally.racketX += (rally.racketTargetX - rally.racketX) * follow;
+  rally.racketY += (rally.racketTargetY - rally.racketY) * follow;
   rally.racketVx = dt > 0 ? (rally.racketX - prevRacketX) / dt : 0;
   applyRallyRacket();
   rally.vy += 580 * dt;
@@ -1284,9 +1298,9 @@ function rallyLoop(now) {
       return;
     }
   }
-  const racketTop = rallyRacketY() - RALLY_RACKET_H / 2;
-  const overRacket = Math.abs(rally.x - rally.racketX) <= RALLY_RACKET_W / 2 + r * .7;
-  if (!rally.toWall && overRacket && rally.y + r >= racketTop && rally.y - r <= racketTop + RALLY_RACKET_H + 12) {
+  const head = rallyHeadCenter();
+  const hitRange = rallyHeadRadius() + r * .8;
+  if (!rally.toWall && Math.hypot(rally.x - head.x, rally.y - head.y) <= hitRange) {
     hitRallyBall();
   }
   applyRallyBall();
@@ -1302,6 +1316,8 @@ function startRally() {
   rally.score = 0;
   rally.racketX = W * .65;
   rally.racketTargetX = W * .65;
+  rally.racketY = rallyRacketHomeY();
+  rally.racketTargetY = rallyRacketHomeY();
   rally.racketVx = 0;
   rallyButton.textContent = "やめる";
   rallyBall.classList.remove("hidden");
@@ -1322,12 +1338,14 @@ function hitRallyBall() {
   updateRallyScore();
   const r = rallyBallRadius();
   const ramp = Math.min(rally.score / 15, 1);
-  const offset = Math.max(-1, Math.min(1, (rally.x - rally.racketX) / (RALLY_RACKET_W / 2)));
-  const centered = 1 - Math.abs(offset);
+  const head = rallyHeadCenter();
+  const dist = Math.hypot(rally.x - head.x, rally.y - head.y);
+  const centered = 1 - Math.min(1, dist / (rallyHeadRadius() + r * .8));
   const ceiling = r + 4;
-  const usable = Math.max(80, rallyRacketY() - RALLY_RACKET_H / 2 - r - ceiling);
-  const apex = usable * (.45 + centered * .25 + Math.random() * .1);
-  rally.y = Math.min(rally.y, rallyRacketY() - RALLY_RACKET_H / 2 - r);
+  const usable = Math.max(80, rallyRacketHomeY() - r - ceiling);
+  const headroom = Math.max(24, (rally.y - ceiling) * .9);
+  const apex = Math.min(usable * (.45 + centered * .25 + Math.random() * .1), headroom);
+  rally.x = Math.min(rally.x, head.x - rallyHeadRadius() - r * .3);
   rally.vy = -Math.sqrt(2 * 580 * apex);
   rally.vx = -(240 + centered * 120 + ramp * 40 + Math.abs(rally.racketVx) * .1);
   rally.toWall = true;

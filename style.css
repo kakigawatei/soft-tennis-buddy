@@ -1211,34 +1211,27 @@ input:focus, select:focus, textarea:focus {
 .rally-racket {
   position: absolute;
   z-index: 4;
-  width: 76px;
-  height: 16px;
-  border-radius: 999px;
+  width: 40px;
+  height: 96px;
   transform: translate(-50%, -50%);
-  background: linear-gradient(180deg, #ff9d70, var(--accent-2));
-  border: 2px solid rgba(255,255,255,.8);
-  box-shadow: 0 4px 10px rgba(24,48,76,.28);
   pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(24,48,76,.28));
+  transform-origin: 50% 86%;
 }
 
-.rally-racket::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  width: 9px;
-  height: 13px;
-  transform: translateX(-50%);
-  border-radius: 0 0 5px 5px;
-  background: #c08a4a;
+.rally-racket svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .rally-racket.hit {
-  animation: racket-pop .18s ease;
+  animation: racket-swing .22s ease;
 }
 
-@keyframes racket-pop {
-  40% { box-shadow: 0 4px 16px rgba(255,139,93,.55); }
+@keyframes racket-swing {
+  35% { transform: translate(-50%, -50%) rotate(-38deg); }
+  100% { transform: translate(-50%, -50%) rotate(-6deg); }
 }
 
 .sky-card.rally-active {
