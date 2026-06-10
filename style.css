@@ -1179,8 +1179,49 @@ input:focus, select:focus, textarea:focus {
     radial-gradient(circle at 32% 30%, #ffffff 0 38%, #f1f6e8 60%, #dde8cf 100%);
   border: 2px solid rgba(124,150,108,.5);
   box-shadow: 0 4px 8px rgba(24,48,76,.22), inset -3px -4px 6px rgba(124,150,108,.25);
-  cursor: pointer;
+  pointer-events: none;
+}
+
+.rally-racket {
+  position: absolute;
+  z-index: 4;
+  width: 76px;
+  height: 16px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(180deg, #ff9d70, var(--accent-2));
+  border: 2px solid rgba(255,255,255,.8);
+  box-shadow: 0 4px 10px rgba(24,48,76,.28);
+  pointer-events: none;
+}
+
+.rally-racket::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 9px;
+  height: 13px;
+  transform: translateX(-50%);
+  border-radius: 0 0 5px 5px;
+  background: #c08a4a;
+}
+
+.rally-racket.hit {
+  animation: racket-pop .18s ease;
+}
+
+@keyframes racket-pop {
+  40% { box-shadow: 0 4px 16px rgba(255,139,93,.55); }
+}
+
+.sky-card.rally-active {
   touch-action: none;
+  cursor: grab;
+}
+
+.sky-card.rally-active .sprite-pet {
+  pointer-events: none;
 }
 
 .rally-ball::after {
@@ -1194,6 +1235,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .rally-ball.hidden,
+.rally-racket.hidden,
 .rally-score.hidden {
   display: none;
 }

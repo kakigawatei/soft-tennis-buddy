@@ -1168,12 +1168,20 @@ function applyPetTransform() {
 
 const rallyButton = document.querySelector("#rallyButton");
 const rallyBall = document.querySelector("#rallyBall");
+const rallyRacket = document.querySelector("#rallyRacket");
 const rallyScoreEl = document.querySelector("#rallyScore");
+const skyCard = document.querySelector(".sky-card");
+const RALLY_RACKET_W = 88;
+const RALLY_RACKET_H = 16;
 const rally = {
   active: false,
   score: 0,
   best: Number(localStorage.getItem("buddy-rally-best")) || 0,
   x: 0, y: 0, vx: 0, vy: 0,
+  racketX: 0,
+  racketTargetX: 0,
+  racketVx: 0,
+  steering: false,
   raf: 0,
   last: 0
 };
@@ -1182,22 +1190,35 @@ function rallyBallRadius() {
   return 17;
 }
 
-function launchRallyBall(fromHit = false) {
+function rallyRacketY() {
+  return H - 30;
+}
+
+function launchRallyBall() {
   const r = rallyBallRadius();
-  if (!fromHit) {
-    rally.x = Math.random() < .5 ? r + 8 : W - r - 8;
-    rally.y = H * .35;
-  }
-  const speedUp = Math.min(rally.score * 14, 200);
-  const dir = fromHit ? (Math.random() < .5 ? -1 : 1) : (rally.x < W / 2 ? 1 : -1);
-  rally.vx = dir * (110 + speedUp + Math.random() * 50);
-  rally.vy = -(230 + speedUp * .8 + Math.random() * 60);
+  rally.x = W * (.3 + Math.random() * .4);
+  rally.y = Math.max(r + 8, H * .28);
+  rally.vx = (Math.random() < .5 ? -1 : 1) * (60 + Math.random() * 60);
+  rally.vy = -120;
   applyRallyBall();
 }
 
 function applyRallyBall() {
   rallyBall.style.left = `${rally.x}px`;
   rallyBall.style.top = `${rally.y}px`;
+}
+
+function applyRallyRacket() {
+  rallyRacket.style.left = `${rally.racketX}px`;
+  rallyRacket.style.top = `${rallyRacketY()}px`;
+  const tilt = Math.max(-.28, Math.min(.28, rally.racketVx / 1400));
+  rallyRacket.style.transform = `translate(-50%, -50%) rotate(${tilt}rad)`;
+}
+
+function steerRacket(event) {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  rally.racketTargetX = Math.max(RALLY_RACKET_W / 2, Math.min(W - RALLY_RACKET_W / 2, x));
 }
 
 function updateRallyScore() {
@@ -1209,7 +1230,11 @@ function rallyLoop(now) {
   const dt = Math.min(32, now - rally.last) / 1000;
   rally.last = now;
   const r = rallyBallRadius();
-  rally.vy += 760 * dt;
+  const prevRacketX = rally.racketX;
+  rally.racketX += (rally.racketTargetX - rally.racketX) * Math.min(1, dt * 24);
+  rally.racketVx = dt > 0 ? (rally.racketX - prevRacketX) / dt : 0;
+  applyRallyRacket();
+  rally.vy += 580 * dt;
   rally.x += rally.vx * dt;
   rally.y += rally.vy * dt;
   if (rally.x < r) {
@@ -1221,9 +1246,13 @@ function rallyLoop(now) {
   }
   if (rally.y < r + 4) {
     rally.y = r + 4;
-    rally.vy = Math.abs(rally.vy) * .8;
+    rally.vy = Math.abs(rally.vy) * .85;
   }
-  if (rally.y > H - r + 6) {
+  const racketTop = rallyRacketY() - RALLY_RACKET_H / 2;
+  const overRacket = Math.abs(rally.x - rally.racketX) <= RALLY_RACKET_W / 2 + r * .7;
+  if (rally.vy > 0 && overRacket && rally.y + r >= racketTop && rally.y - r <= racketTop + RALLY_RACKET_H + 12) {
+    hitRallyBall();
+  } else if (rally.y > H + r * 2) {
     endRally(true);
     return;
   }
@@ -1238,33 +1267,54 @@ function startRally() {
   }
   rally.active = true;
   rally.score = 0;
+  rally.racketX = W / 2;
+  rally.racketTargetX = W / 2;
+  rally.racketVx = 0;
   rallyButton.textContent = "やめる";
   rallyBall.classList.remove("hidden");
+  rallyRacket.classList.remove("hidden");
   rallyScoreEl.classList.remove("hidden");
+  skyCard?.classList.add("rally-active");
   updateRallyScore();
-  petSay(store.character === "lee" ? "ラリー勝負！ボールを落とさずタッチし続けよう！" : "ラリーしよう。ボールが落ちる前にタッチしてね。", "focus");
-  launchRallyBall(false);
+  applyRallyRacket();
+  petSay(store.character === "lee" ? "ラリー勝負！指でラケットを動かして打ち返そう！" : "ラリーしよう。指でラケットを左右に動かして、ボールを受け止めてね。", "focus");
+  launchRallyBall();
   rally.last = performance.now();
   rally.raf = requestAnimationFrame(rallyLoop);
 }
 
-function hitRallyBall(event) {
-  if (!rally.active) return;
-  event.preventDefault();
-  event.stopPropagation();
+function hitRallyBall() {
   rally.score += 1;
   updateRallyScore();
-  launchRallyBall(true);
+  const r = rallyBallRadius();
+  const ramp = Math.min(rally.score / 20, 1);
+  const late = Math.max(0, Math.min((rally.score - 20) / 25, 1));
+  const ceiling = r + 4;
+  const usable = Math.max(80, rallyRacketY() - RALLY_RACKET_H / 2 - r - ceiling);
+  const apex = usable * (.55 + ramp * .3 + Math.random() * .1);
+  const offset = Math.max(-1, Math.min(1, (rally.x - rally.racketX) / (RALLY_RACKET_W / 2)));
+  const vxCap = 200 + late * 70;
+  rally.y = rallyRacketY() - RALLY_RACKET_H / 2 - r;
+  rally.vy = -Math.sqrt(2 * 580 * apex);
+  rally.vx = offset * (120 + ramp * 60 + late * 50) + rally.racketVx * .15 + (Math.random() - .5) * (40 + ramp * 70 + late * 110);
+  rally.vx = Math.max(-vxCap, Math.min(vxCap, rally.vx));
+  rallyRacket.classList.remove("hit");
+  void rallyRacket.offsetWidth;
+  rallyRacket.classList.add("hit");
   setExpression(rally.score % 5 === 0 ? "heart" : "happy", 600);
   if (rally.score === 10) petSay(store.character === "lee" ? "10回連続！すごいリズム！" : "10回続いたね。いいリズムだよ。", "happy");
+  else if (rally.score === 20) petSay(store.character === "lee" ? "20回！もう止まらない！" : "20回。すごい集中力だね。", "heart");
 }
 
 function endRally(missed) {
   cancelAnimationFrame(rally.raf);
   rally.active = false;
+  rally.steering = false;
   rallyButton.textContent = "ラリー";
   rallyBall.classList.add("hidden");
+  rallyRacket.classList.add("hidden");
   rallyScoreEl.classList.add("hidden");
+  skyCard?.classList.remove("rally-active");
   const score = rally.score;
   const isBest = score > rally.best;
   if (isBest) {
@@ -2456,6 +2506,7 @@ document.querySelector("#petButton").addEventListener("click", () => {
 });
 
 spritePet?.addEventListener("pointerdown", event => {
+  if (rally.active) return;
   event.preventDefault();
   spritePet.setPointerCapture(event.pointerId);
   initPetPhysics();
@@ -2507,14 +2558,35 @@ spritePet?.addEventListener("pointercancel", () => {
   petPhysics.dragging = false;
 });
 
-document.querySelector(".sky-card")?.addEventListener("pointerdown", event => {
-  if (event.target === spritePet || event.target.closest("button")) return;
-  if (event.target === rallyBall) return;
+skyCard?.addEventListener("pointerdown", event => {
+  if (event.target.closest("button")) return;
+  if (rally.active) {
+    event.preventDefault();
+    rally.steering = true;
+    try {
+      skyCard.setPointerCapture(event.pointerId);
+    } catch {}
+    steerRacket(event);
+    return;
+  }
+  if (event.target === spritePet || event.target === rallyBall) return;
   bouncePetFromPointer(event);
 });
 
+skyCard?.addEventListener("pointermove", event => {
+  if (!rally.active) return;
+  if (rally.steering || event.pointerType === "mouse") steerRacket(event);
+});
+
+skyCard?.addEventListener("pointerup", () => {
+  rally.steering = false;
+});
+
+skyCard?.addEventListener("pointercancel", () => {
+  rally.steering = false;
+});
+
 rallyButton?.addEventListener("click", startRally);
-rallyBall?.addEventListener("pointerdown", hitRallyBall);
 
 settingsButton.addEventListener("click", openSettings);
 document.querySelectorAll("[data-close-settings]").forEach(button => {
