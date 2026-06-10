@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#79d7df" />
+    <title>ふわとも ソフトテニスコーチ</title>
+    <link rel="stylesheet" href="./style.css?v=20260609-match-check" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="phone" aria-label="パートナーペットアプリ">
+        <div class="statusbar">
+          <span>Soft Tennis Buddy</span>
+          <div class="status-actions">
+            <span id="todayLabel"></span>
+            <button id="settingsButton" class="settings-button" type="button" aria-label="設定を開く">設定</button>
+          </div>
+        </div>
+
+        <section class="sky-card">
+          <div class="court-lines" aria-hidden="true"></div>
+          <canvas id="petCanvas" aria-label="ふわふわ遊ぶパートナーペット"></canvas>
+          <img id="spritePet" class="sprite-pet" src="./assets/kon-calm.png" alt="スプライト画像の相棒キャラクター" />
+          <div class="speech" id="petSpeech">今日の結果はどうだった？一緒に振り返ろう。</div>
+          <button id="petButton" class="pet-button" type="button">話しかける</button>
+        </section>
+
+        <section id="dailyPlan" class="daily-plan" aria-live="polite"></section>
+
+        <nav class="tabs" aria-label="機能切り替え">
+          <button class="tab active" data-tab="chat" type="button">相談</button>
+          <button class="tab" data-tab="practice" type="button">練習</button>
+          <button class="tab" data-tab="match" type="button">試合前</button>
+          <button class="tab" data-tab="result" type="button">結果</button>
+          <button class="tab" data-tab="rules" type="button">ルール</button>
+        </nav>
+
+        <section id="chat" class="panel active">
+          <div id="chatLog" class="chat-log" aria-live="polite"></div>
+          <div class="chat-dock">
+            <form id="chatForm" class="chat-form">
+              <input id="chatInput" placeholder="例: 前衛で迷う / サーブが入らない" autocomplete="off" />
+              <button type="submit">送信</button>
+              <div class="quick-row">
+                <button class="quick-prompt" data-prompt="今日の結果はどうだった？" type="submit">振り返り</button>
+                <button class="quick-prompt" data-prompt="今日はどんな練習をする？" type="submit">練習相談</button>
+                <button class="quick-prompt" data-prompt="サーブのトスが安定しない" type="submit"><small>基礎</small>トス</button>
+                <button class="quick-prompt" data-prompt="レシーブで詰まる" type="submit"><small>基礎</small>レシーブ</button>
+                <button class="quick-prompt" data-prompt="前衛で出るタイミングがわからない" type="submit"><small>前衛</small>出る判断</button>
+                <button class="quick-prompt" data-prompt="後衛の球が浅くなる" type="submit"><small>後衛</small>浅い球</button>
+                <button class="quick-prompt" data-prompt="試合で緊張する" type="submit"><small>メンタル</small>緊張</button>
+                <button class="quick-prompt" data-prompt="ペアと噛み合わない" type="submit"><small>ペア</small>連携</button>
+                <button class="quick-prompt" data-prompt="ダブルスの動き方を教えて" type="submit"><small>ペア</small>動き方</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section id="practice" class="panel">
+          <h2>今日の練習メニュー</h2>
+          <div class="practice-controls">
+            <select id="practiceGoal">
+              <option value="serve">サーブを安定させたい</option>
+              <option value="receive">レシーブを強くしたい</option>
+              <option value="front">前衛の動きを磨きたい</option>
+              <option value="back">後衛のラリー力を上げたい</option>
+              <option value="pair">ペア連携をよくしたい</option>
+            </select>
+            <select id="practiceTime">
+              <option value="30">30分</option>
+              <option value="60" selected>60分</option>
+              <option value="90">90分</option>
+            </select>
+            <select id="practiceLevel">
+              <option value="beginner">初心者</option>
+              <option value="middle" selected>中級者</option>
+              <option value="match">試合前</option>
+            </select>
+            <select id="practiceRole">
+              <option value="both">どちらも</option>
+              <option value="front">前衛</option>
+              <option value="back">後衛</option>
+            </select>
+            <select id="practiceCondition">
+              <option value="good">元気</option>
+              <option value="normal" selected>普通</option>
+              <option value="tired">疲れ気味</option>
+            </select>
+            <button id="makePlan" type="button">組み立てる</button>
+          </div>
+          <div id="practicePlan" class="plan-list"></div>
+        </section>
+
+        <section id="match" class="panel">
+          <h2>試合前チェックリスト</h2>
+          <div id="matchChecklist" class="match-checklist" aria-live="polite"></div>
+        </section>
+
+        <section id="result" class="panel">
+          <h2>今日の結果メモ</h2>
+          <div id="resultCoach" class="result-coach" aria-live="polite"></div>
+          <div id="weeklyReview" class="weekly-review" aria-live="polite"></div>
+          <form id="resultForm" class="result-grid">
+            <label><span>試合/練習</span><input id="resultTitle" placeholder="例: 校内戦 / 放課後練習" /></label>
+            <label><span>できたこと</span><textarea id="goodPoint" placeholder="例: 2本目サーブを落ち着いて入れた"></textarea></label>
+            <label><span>次の課題</span><textarea id="nextPoint" placeholder="例: 深いロブの後に前へ出る判断"></textarea></label>
+            <button type="submit">記録する</button>
+          </form>
+          <div id="resultList" class="result-list"></div>
+        </section>
+
+        <section id="rules" class="panel">
+          <h2>ルール解説</h2>
+          <div class="rule-categories" aria-label="ルールカテゴリ">
+            <button class="rule-chip active" data-rule-category="all" type="button">全部</button>
+            <button class="rule-chip" data-rule-category="match" type="button">試合</button>
+            <button class="rule-chip" data-rule-category="serve" type="button">サービス</button>
+            <button class="rule-chip" data-rule-category="play" type="button">プレー中</button>
+            <button class="rule-chip" data-rule-category="judge" type="button">審判</button>
+            <button class="rule-chip" data-rule-category="call" type="button">コール</button>
+            <button class="rule-chip" data-rule-category="trouble" type="button">困った時</button>
+            <button class="rule-chip" data-rule-category="manner" type="button">マナー</button>
+            <button class="rule-chip" data-rule-category="gear" type="button">用具</button>
+          </div>
+          <div class="rule-search">
+            <input id="ruleSearch" placeholder="例: 得点 / ファイナル / フットフォルト / 妨害 / コール" />
+          </div>
+          <p id="ruleCount" class="rule-count"></p>
+          <div id="ruleCards" class="rule-cards"></div>
+          <p class="source-note">
+            参照: <a href="https://www.jsta.or.jp/about_softtennis" target="_blank" rel="noreferrer">日本ソフトテニス連盟「ソフトテニスとは」</a> /
+            <a href="https://www.jsta.or.jp/judge_tech" target="_blank" rel="noreferrer">JSTA 審判・技術等級</a> /
+            <a href="https://www.jsta.or.jp/about_softtennis/words" target="_blank" rel="noreferrer">JSTA ソフトテニス用語</a> /
+            <a href="https://www.jsta.or.jp/wp-content/uploads/rule/kyogi_20250401.pdf" target="_blank" rel="noreferrer">JSTA 競技規則PDF</a>
+          </p>
+        </section>
+
+        <div id="settingsSheet" class="settings-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+          <div class="settings-backdrop" data-close-settings></div>
+          <section class="settings-panel">
+            <div class="settings-head">
+              <div>
+                <p>SETTINGS</p>
+                <h2 id="settingsTitle">相棒の設定</h2>
+              </div>
+              <button class="close-button" type="button" data-close-settings aria-label="設定を閉じる">×</button>
+            </div>
+            <label>
+              <span>相棒の名前</span>
+              <input id="petName" maxlength="12" autocomplete="off" />
+            </label>
+            <div class="character-picker" aria-label="キャラクター選択">
+              <span>キャラクター</span>
+              <div class="character-cards">
+                <button class="character-card active" data-character="kon" type="button" aria-pressed="true">
+                  <img src="./assets/kon-happy.png" alt="" />
+                  <strong>こん</strong>
+                  <small>おだやかに寄り添う相棒</small>
+                </button>
+                <button class="character-card" data-character="lee" type="button" aria-pressed="false">
+                  <img src="./assets/lee-happy.png" alt="" />
+                  <strong>リー</strong>
+                  <small>明るく元気に励ます相棒</small>
+                </button>
+              </div>
+              <input id="characterSelect" type="hidden" value="kon" />
+            </div>
+            <label>
+              <span>メインカラー</span>
+              <select id="petColor">
+                <option value="mint">ミント</option>
+                <option value="sunset">夕焼け</option>
+                <option value="sky">空色</option>
+                <option value="grape">ぶどう</option>
+              </select>
+            </label>
+            <div class="settings-group">
+              <h3>コーチ設定</h3>
+              <label>
+                <span>話し方</span>
+                <select id="talkStyle">
+                  <option value="gentle">やさしい</option>
+                  <option value="energetic">元気</option>
+                  <option value="strict">きびしめ</option>
+                  <option value="praise">ほめ多め</option>
+                </select>
+              </label>
+              <label>
+                <span>コーチ方針</span>
+                <select id="coachPolicy">
+                  <option value="basic">基礎重視</option>
+                  <option value="match">試合重視</option>
+                  <option value="mental">メンタル重視</option>
+                  <option value="pair">ペア連携重視</option>
+                </select>
+              </label>
+            </div>
+            <div class="settings-group">
+              <h3>プレイヤー情報</h3>
+              <label>
+                <span>ポジション</span>
+                <select id="playerRole">
+                  <option value="both">どちらも</option>
+                  <option value="front">前衛</option>
+                  <option value="back">後衛</option>
+                </select>
+              </label>
+              <label>
+                <span>経験レベル</span>
+                <select id="playerLevel">
+                  <option value="beginner">初心者</option>
+                  <option value="middle">中級者</option>
+                  <option value="match">試合前・実戦派</option>
+                </select>
+              </label>
+              <label>
+                <span>今の目標</span>
+                <input id="playerGoal" maxlength="28" placeholder="例: 県大会で1勝する" autocomplete="off" />
+              </label>
+            </div>
+            <p class="settings-note">キャラクター画像は、登録済みのナンシキ村スプライトを使って表示します。ここで選んだ方針は相談と練習メニューに反映されます。</p>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script src="./game.js?v=20260609-match-check"></script>
+  </body>
+</html>
