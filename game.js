@@ -1872,16 +1872,6 @@ function renderScoreBoard() {
   scoreBoard.innerHTML = `
     <article class="score-card">
       <small>SCORE BOARD</small>
-      <div class="score-setup">
-        <label><span>試合形式</span>
-          <select id="scoreFormat">
-            ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
-          </select>
-        </label>
-        <label><span>相手の名前</span>
-          <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
-        </label>
-      </div>
       <div class="score-games" aria-label="ゲームカウント">
         <div class="score-side"><b>こっち</b><strong>${state.games.us}</strong></div>
         <span>ゲーム</span>
@@ -1897,6 +1887,16 @@ function renderScoreBoard() {
         <button id="scoreUndo" type="button">1本戻す</button>
         <button id="scoreReset" type="button">リセット</button>
         ${state.finished && !state.saved ? '<button id="scoreToResult" class="score-save" type="button">結果メモに残す</button>' : ""}
+      </div>
+      <div class="score-setup">
+        <label><span>試合形式</span>
+          <select id="scoreFormat">
+            ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
+          </select>
+        </label>
+        <label><span>相手の名前</span>
+          <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+        </label>
       </div>
     </article>
   `;
