@@ -66,6 +66,14 @@ const CHARACTERS = {
   }
 };
 
+// 表情PNG差し替え時に古いキャッシュが使われないようにする
+const SPRITE_VERSION = "20260610-heartfix";
+for (const expressions of [CHARACTERS.kon.expressions, CHARACTERS.lee.expressions]) {
+  for (const key of Object.keys(expressions)) {
+    expressions[key] = `${expressions[key]}?v=${SPRITE_VERSION}`;
+  }
+}
+
 function readStoredJson(key, fallback) {
   try {
     const value = localStorage.getItem(key);
