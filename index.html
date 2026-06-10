@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#79d7df" />
     <title>ふわとも ソフトテニスコーチ</title>
-    <link rel="stylesheet" href="./style.css?v=20260609-match-check" />
+    <link rel="stylesheet" href="./style.css?v=20260610-score" />
   </head>
   <body>
     <main class="app">
@@ -32,6 +32,7 @@
           <button class="tab active" data-tab="chat" type="button">相談</button>
           <button class="tab" data-tab="practice" type="button">練習</button>
           <button class="tab" data-tab="match" type="button">試合前</button>
+          <button class="tab" data-tab="score" type="button">スコア</button>
           <button class="tab" data-tab="result" type="button">結果</button>
           <button class="tab" data-tab="rules" type="button">ルール</button>
         </nav>
@@ -95,6 +96,11 @@
         <section id="match" class="panel">
           <h2>試合前チェックリスト</h2>
           <div id="matchChecklist" class="match-checklist" aria-live="polite"></div>
+        </section>
+
+        <section id="score" class="panel">
+          <h2>試合スコア</h2>
+          <div id="scoreBoard" class="score-board" aria-live="polite"></div>
         </section>
 
         <section id="result" class="panel">
@@ -224,6 +230,6 @@
         </div>
       </section>
     </main>
-    <script src="./game.js?v=20260609-match-check"></script>
+    <script src="./game.js?v=20260610-score"></script>
   </body>
 </html>

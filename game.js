@@ -18,6 +18,7 @@ const chatLog = document.querySelector("#chatLog");
 const chatForm = document.querySelector("#chatForm");
 const chatInput = document.querySelector("#chatInput");
 const matchChecklist = document.querySelector("#matchChecklist");
+const scoreBoard = document.querySelector("#scoreBoard");
 const resultForm = document.querySelector("#resultForm");
 const resultCoach = document.querySelector("#resultCoach");
 const weeklyReview = document.querySelector("#weeklyReview");
@@ -84,7 +85,8 @@ const store = {
   daily: readStoredJson("buddy-daily", null),
   bond: readStoredJson("buddy-bond", null),
   preferences: readStoredJson("buddy-preferences", null),
-  matchPrep: readStoredJson("buddy-match-prep", null)
+  matchPrep: readStoredJson("buddy-match-prep", null),
+  score: readStoredJson("buddy-score", null)
 };
 
 const palettes = {
@@ -644,6 +646,188 @@ function ensureMatchPrep() {
   }
 }
 
+const scoreCallNames = ["ゼロ", "ワン", "ツー", "スリー", "フォー", "ファイブ", "シックス"];
+
+function newScoreState(format = 7, opponent = "") {
+  return {
+    format,
+    opponent,
+    games: { us: 0, them: 0 },
+    points: { us: 0, them: 0 },
+    finalGame: false,
+    finished: false,
+    winner: null,
+    saved: false,
+    history: []
+  };
+}
+
+function ensureScore() {
+  if (!store.score || !store.score.games || !store.score.points) {
+    store.score = newScoreState();
+  }
+  if (!Array.isArray(store.score.history)) store.score.history = [];
+}
+
+function scoreGamesToWin(format) {
+  return Math.ceil(format / 2);
+}
+
+function scoreTargetPoints(state) {
+  return state.finalGame ? 7 : 4;
+}
+
+function scoreOpponentLabel(state) {
+  return state.opponent || "あいて";
+}
+
+function scoreCall(state) {
+  const { us, them } = state.points;
+  const target = scoreTargetPoints(state);
+  if (us >= target - 1 && them >= target - 1) {
+    if (us === them) return "デュース";
+    return us > them ? "アドバンテージ こっち" : `アドバンテージ ${scoreOpponentLabel(state)}`;
+  }
+  const call = n => scoreCallNames[n] || String(n);
+  if (us === 0 && them === 0) return state.finalGame ? "ファイナルゲーム スタート" : "ゼロオール";
+  if (us === them) return `${call(us)}オール`;
+  return `${call(us)}・${call(them)}`;
+}
+
+function scoreGamePointSide(state) {
+  const target = scoreTargetPoints(state);
+  const { us, them } = state.points;
+  if (us >= target - 1 && us - them >= 1) return "us";
+  if (them >= target - 1 && them - us >= 1) return "them";
+  return null;
+}
+
+function pushScoreHistory(state) {
+  state.history.push(JSON.stringify({
+    games: state.games,
+    points: state.points,
+    finalGame: state.finalGame,
+    finished: state.finished,
+    winner: state.winner
+  }));
+  if (state.history.length > 80) state.history.shift();
+}
+
+function addScorePoint(side) {
+  ensureScore();
+  const state = store.score;
+  if (state.finished) return;
+  pushScoreHistory(state);
+  state.points[side] += 1;
+  const target = scoreTargetPoints(state);
+  const { us, them } = state.points;
+  let gameWon = null;
+  if (Math.max(us, them) >= target && Math.abs(us - them) >= 2) {
+    gameWon = us > them ? "us" : "them";
+    state.games[gameWon] += 1;
+    state.points = { us: 0, them: 0 };
+    state.finalGame = false;
+    const need = scoreGamesToWin(state.format);
+    if (state.games[gameWon] >= need) {
+      state.finished = true;
+      state.winner = gameWon;
+    } else if (state.games.us === need - 1 && state.games.them === need - 1) {
+      state.finalGame = true;
+    }
+  }
+  saveStore();
+  renderScoreBoard();
+  announceScore(state, side, gameWon);
+}
+
+function announceScore(state, side, gameWon) {
+  const lee = store.character === "lee";
+  if (state.finished) {
+    const won = state.winner === "us";
+    addBondXp(won ? 20 : 12, won ? "試合に勝った" : "最後まで戦い抜いた", won ? "heart" : "calm", false);
+    if (won) {
+      petSay(lee
+        ? `マッチ勝利！${state.games.us}-${state.games.them}、最高の試合だった！`
+        : `マッチ勝利、${state.games.us}-${state.games.them}。落ち着いて取り切れたね。おめでとう。`, "heart");
+    } else {
+      petSay(lee
+        ? "悔しいけど、ここまで戦えたのが力だよ。次は取り返そう！"
+        : "負けは次の材料になるよ。よかった1本を、結果メモに残しておこう。", "sad");
+    }
+    return;
+  }
+  if (gameWon) {
+    if (state.finalGame) {
+      petSay(lee ? "ついにファイナル！7点先取、思い切っていこう！" : "ファイナルゲームだね。1本ずつ、カウントを声に出して確認しよう。", "focus");
+    } else if (gameWon === "us") {
+      petSay(lee ? "ゲーム取った！この流れ、つなげよう！" : "いいゲームだったね。次も最初の1本をていねいに。", "happy");
+    } else {
+      petSay(lee ? "1ゲーム取られたけど、まだまだ！切り替えよう！" : "取られた後こそ深呼吸。次のゲームの入りを大事にね。", "focus");
+    }
+    return;
+  }
+  const gamePoint = scoreGamePointSide(state);
+  if (state.points.us === state.points.them && state.points.us >= scoreTargetPoints(state) - 1) {
+    petSay(lee ? "デュース！ここからが勝負どころ！" : "デュースだね。急がず、狙いを1つに絞ろう。", "focus");
+  } else if (gamePoint === "us") {
+    petSay(lee ? "ゲームポイント！思い切っていこう！" : "ゲームポイントだよ。いつも通りの1本でいい。", "focus");
+  } else if (gamePoint === "them") {
+    petSay(lee ? "ピンチだけど1本ずつ！まず返そう！" : "相手のゲームポイント。1本しのげば流れは変わるよ。", "focus");
+  } else if (side === "us") {
+    setExpression("happy", 900);
+  } else {
+    setExpression("calm", 900);
+  }
+}
+
+function undoScorePoint() {
+  ensureScore();
+  const state = store.score;
+  const last = state.history.pop();
+  if (!last) {
+    petSay("取り消せる記録がまだないよ。", "calm");
+    return;
+  }
+  const snap = JSON.parse(last);
+  state.games = snap.games;
+  state.points = snap.points;
+  state.finalGame = snap.finalGame;
+  state.finished = snap.finished;
+  state.winner = snap.winner;
+  if (!state.finished) state.saved = false;
+  saveStore();
+  renderScoreBoard();
+  petSay("1本前に戻したよ。", "calm");
+}
+
+function resetScore(format) {
+  ensureScore();
+  store.score = newScoreState(format ?? store.score.format, store.score.opponent);
+  saveStore();
+  renderScoreBoard();
+}
+
+function saveScoreToResults() {
+  ensureScore();
+  const state = store.score;
+  if (!state.finished || state.saved) return;
+  const won = state.winner === "us";
+  const opponent = scoreOpponentLabel(state);
+  store.results.unshift({
+    date: new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium" }).format(new Date()),
+    title: `試合 vs ${opponent} ${state.games.us}-${state.games.them} ${won ? "勝ち" : "負け"}`,
+    good: won ? "ゲームを取り切れた" : "最後まで集中して戦えた",
+    next: won ? "勝てた形をもう一度確認する" : "取られた場面の入り方を見直す",
+    focus: "mental"
+  });
+  state.saved = true;
+  saveStore();
+  renderResults();
+  renderScoreBoard();
+  document.querySelector('[data-tab="result"]').click();
+  petSay("結果メモに残したよ。できたことを書き足すと、次につながるよ。", "happy");
+}
+
 const focusLabels = {
   serve: "サーブ",
   receive: "レシーブ",
@@ -757,6 +941,7 @@ function saveStore() {
   localStorage.setItem("buddy-bond", JSON.stringify(store.bond));
   localStorage.setItem("buddy-preferences", JSON.stringify(store.preferences));
   localStorage.setItem("buddy-match-prep", JSON.stringify(store.matchPrep));
+  localStorage.setItem("buddy-score", JSON.stringify(store.score));
   try {
     if (store.spriteData) localStorage.setItem("buddy-sprite-data", store.spriteData);
     else localStorage.removeItem("buddy-sprite-data");
@@ -1488,6 +1673,68 @@ function renderMatchChecklist() {
   });
 }
 
+function renderScoreBoard() {
+  if (!scoreBoard) return;
+  ensureScore();
+  const state = store.score;
+  const need = scoreGamesToWin(state.format);
+  const opponent = scoreOpponentLabel(state);
+  const statusLine = state.finished
+    ? state.winner === "us" ? "マッチ勝利！おつかれさま！" : "マッチ終了。よく戦ったよ。"
+    : state.finalGame
+      ? "ファイナルゲーム: 7ポイント先取（6-6からは2点差）"
+      : `${state.format}ゲームマッチ: ${need}ゲーム先取 / 1ゲームは4ポイント`;
+  scoreBoard.innerHTML = `
+    <article class="score-card">
+      <small>SCORE BOARD</small>
+      <div class="score-setup">
+        <label><span>試合形式</span>
+          <select id="scoreFormat">
+            ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
+          </select>
+        </label>
+        <label><span>相手の名前</span>
+          <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+        </label>
+      </div>
+      <div class="score-games" aria-label="ゲームカウント">
+        <div class="score-side"><b>こっち</b><strong>${state.games.us}</strong></div>
+        <span>ゲーム</span>
+        <div class="score-side"><b>${escapeHtml(opponent)}</b><strong>${state.games.them}</strong></div>
+      </div>
+      <p class="score-call">${escapeHtml(scoreCall(state))}</p>
+      <div class="score-points">
+        <button id="scoreUs" type="button" ${state.finished ? "disabled" : ""}><strong>${state.points.us}</strong><span>こっち +1</span></button>
+        <button id="scoreThem" type="button" ${state.finished ? "disabled" : ""}><strong>${state.points.them}</strong><span>${escapeHtml(opponent)} +1</span></button>
+      </div>
+      <p class="score-status">${statusLine}</p>
+      <div class="score-tools">
+        <button id="scoreUndo" type="button">1本戻す</button>
+        <button id="scoreReset" type="button">リセット</button>
+        ${state.finished && !state.saved ? '<button id="scoreToResult" class="score-save" type="button">結果メモに残す</button>' : ""}
+      </div>
+    </article>
+  `;
+  scoreBoard.querySelector("#scoreFormat")?.addEventListener("change", event => {
+    const format = Number(event.target.value) || 7;
+    resetScore(format);
+    petSay(`${format}ゲームマッチに切り替えたよ。${scoreGamesToWin(format)}ゲーム先取だね。`, "focus");
+  });
+  scoreBoard.querySelector("#scoreOpponent")?.addEventListener("change", event => {
+    state.opponent = event.target.value.trim();
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#scoreUs")?.addEventListener("click", () => addScorePoint("us"));
+  scoreBoard.querySelector("#scoreThem")?.addEventListener("click", () => addScorePoint("them"));
+  scoreBoard.querySelector("#scoreUndo")?.addEventListener("click", undoScorePoint);
+  scoreBoard.querySelector("#scoreReset")?.addEventListener("click", () => {
+    resetScore();
+    petSay("スコアをリセットしたよ。次の試合もがんばろう。", "calm");
+  });
+  scoreBoard.querySelector("#scoreToResult")?.addEventListener("click", saveScoreToResults);
+}
+
 const resultFocuses = {
   serve: {
     label: "サーブ",
@@ -2094,7 +2341,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
     tab.classList.add("active");
     document.querySelector(`#${tab.dataset.tab}`).classList.add("active");
-    const tabMood = { chat: "calm", practice: "focus", match: "focus", result: "happy", rules: "focus" }[tab.dataset.tab] || "calm";
+    const tabMood = { chat: "calm", practice: "focus", match: "focus", score: "focus", result: "happy", rules: "focus" }[tab.dataset.tab] || "calm";
     setExpression(tabMood, 1800);
   });
 });
@@ -2164,6 +2411,8 @@ syncPreferenceControls();
 renderDailyPlan();
 seedChat();
 renderMatchChecklist();
+ensureScore();
+renderScoreBoard();
 renderResults();
 renderRules();
 makePracticePlan(false);
