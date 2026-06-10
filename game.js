@@ -22,6 +22,7 @@ const scoreBoard = document.querySelector("#scoreBoard");
 const resultForm = document.querySelector("#resultForm");
 const resultCoach = document.querySelector("#resultCoach");
 const weeklyReview = document.querySelector("#weeklyReview");
+const resultStats = document.querySelector("#resultStats");
 const resultList = document.querySelector("#resultList");
 const ruleSearch = document.querySelector("#ruleSearch");
 const ruleCards = document.querySelector("#ruleCards");
@@ -877,6 +878,7 @@ function addBondXp(amount, label, mood = "happy", announce = true) {
   saveStore();
   renderDailyPlan();
   renderWeeklyReview();
+  renderResultStats();
   if (!announce) return;
   if (afterLevel > beforeLevel) {
     petSay(store.character === "lee"
@@ -951,7 +953,7 @@ function saveStore() {
     localStorage.removeItem("buddy-sprite-data");
     localStorage.removeItem("buddy-sprite-frame");
   }
-  localStorage.setItem("buddy-results", JSON.stringify(store.results.slice(0, 8)));
+  localStorage.setItem("buddy-results", JSON.stringify(store.results.slice(0, 30)));
 }
 
 function resize() {
@@ -1533,9 +1535,73 @@ function renderDailyPlan() {
   });
 }
 
+function renderResultStats() {
+  if (!resultStats) return;
+  ensureBond();
+  const dayFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium" });
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push({
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      key: dayFormat.format(date),
+      count: 0
+    });
+  }
+  const focusCounts = {};
+  for (const item of store.results) {
+    const day = days.find(day => day.key === item.date);
+    if (day) day.count += 1;
+    const focus = item.focus && focusLabels[item.focus] ? item.focus : "mental";
+    focusCounts[focus] = (focusCounts[focus] || 0) + 1;
+  }
+  const maxCount = Math.max(1, ...days.map(day => day.count));
+  const bars = days.map((day, index) => {
+    const height = day.count ? Math.max(6, (day.count / maxCount) * 50) : 3;
+    const x = 10 + index * 38;
+    return `
+      <rect x="${x}" y="${66 - height}" width="26" height="${height}" rx="4" class="${day.count ? "stats-bar" : "stats-bar empty"}"></rect>
+      ${day.count ? `<text x="${x + 13}" y="${62 - height}" class="stats-value">${day.count}</text>` : ""}
+      <text x="${x + 13}" y="80" class="stats-day">${day.label}</text>
+    `;
+  }).join("");
+  const weekTotal = days.reduce((sum, day) => sum + day.count, 0);
+  const maxFocus = Math.max(1, ...Object.values(focusCounts));
+  const focusRows = Object.entries(focusLabels).map(([key, label]) => {
+    const count = focusCounts[key] || 0;
+    return `
+      <div class="stats-focus-row">
+        <span>${label}</span>
+        <div class="stats-meter"><i style="width:${Math.round((count / maxFocus) * 100)}%"></i></div>
+        <b>${count}</b>
+      </div>
+    `;
+  }).join("");
+  const xp = store.bond.xp || 0;
+  resultStats.innerHTML = `
+    <article class="stats-card">
+      <small>GROWTH GRAPH</small>
+      <strong>この7日間の記録: ${weekTotal}件</strong>
+      <svg viewBox="0 0 286 86" role="img" aria-label="直近7日間の記録件数グラフ">
+        <line x1="6" y1="66" x2="280" y2="66" class="stats-axis"></line>
+        ${bars}
+      </svg>
+      <strong>記録のテーマ分布（直近${Math.min(store.results.length, 30)}件）</strong>
+      ${store.results.length ? `<div class="stats-focus">${focusRows}</div>` : '<p class="stats-empty">まだ記録がないよ。結果メモを書くと、ここに成長が見えてくる。</p>'}
+      <div class="stats-bond">
+        <span>相棒Lv.${bondLevel(xp)}</span>
+        <div class="stats-meter"><i style="width:${bondProgress(xp)}%"></i></div>
+        <b>あと${100 - bondProgress(xp)}XPでLv.${bondLevel(xp) + 1}</b>
+      </div>
+    </article>
+  `;
+}
+
 function renderResults() {
   renderResultCoach();
   renderWeeklyReview();
+  renderResultStats();
   resultList.innerHTML = "";
   if (!store.results.length) {
     const empty = document.createElement("div");
