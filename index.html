@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#79d7df" />
     <title>ナンシキ村</title>
-    <link rel="stylesheet" href="./style.css?v=20260610-swing" />
+    <link rel="stylesheet" href="./style.css?v=20260611-bottomnav" />
   </head>
   <body>
     <main class="app">
@@ -40,15 +40,6 @@
         </section>
 
         <section id="dailyPlan" class="daily-plan" aria-live="polite"></section>
-
-        <nav class="tabs" aria-label="機能切り替え">
-          <button class="tab active" data-tab="chat" type="button">相談</button>
-          <button class="tab" data-tab="practice" type="button">練習</button>
-          <button class="tab" data-tab="match" type="button">試合前</button>
-          <button class="tab" data-tab="score" type="button">スコア</button>
-          <button class="tab" data-tab="result" type="button">結果</button>
-          <button class="tab" data-tab="rules" type="button">ルール</button>
-        </nav>
 
         <section id="chat" class="panel active">
           <div id="chatLog" class="chat-log" aria-live="polite"></div>
@@ -155,6 +146,15 @@
             <a href="https://www.jsta.or.jp/wp-content/uploads/rule/kyogi_20250401.pdf" target="_blank" rel="noreferrer">JSTA 競技規則PDF</a>
           </p>
         </section>
+
+        <nav class="tabs" aria-label="機能切り替え">
+          <button class="tab active" data-tab="chat" type="button">相談</button>
+          <button class="tab" data-tab="practice" type="button">練習</button>
+          <button class="tab" data-tab="match" type="button">試合前</button>
+          <button class="tab" data-tab="score" type="button">スコア</button>
+          <button class="tab" data-tab="result" type="button">結果</button>
+          <button class="tab" data-tab="rules" type="button">ルール</button>
+        </nav>
 
         <div id="settingsSheet" class="settings-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
           <div class="settings-backdrop" data-close-settings></div>
