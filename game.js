@@ -776,6 +776,17 @@ function addScorePoint(side, info = {}) {
     } else if (state.games.us === need - 1 && state.games.them === need - 1) {
       state.finalGame = true;
     }
+  } else {
+    // サーバーは2ポイントごとに交代（ファイナルはサーブ権もチーム間で交互）
+    const pointsInGame = state.points.us + state.points.them;
+    if (pointsInGame % 2 === 0) {
+      if (state.finalGame) {
+        state.serveSide = state.serveSide === "us" ? "them" : "us";
+        if (state.serveSide === "us") state.server = state.server === 1 ? 2 : 1;
+      } else if (state.serveSide === "us") {
+        state.server = state.server === 1 ? 2 : 1;
+      }
+    }
   }
   saveStore();
   renderScoreBoard();
