@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#79d7df" />
     <title>ナンシキ村</title>
-    <link rel="stylesheet" href="./style.css?v=20260611-bondlog" />
+    <link rel="stylesheet" href="./style.css?v=20260611-analysis" />
   </head>
   <body>
     <main class="app">
@@ -220,6 +220,16 @@
               </label>
             </div>
             <div class="settings-group">
+              <h3>スコア設定</h3>
+              <label>
+                <span>スコアの記録方法</span>
+                <select id="scoreMode">
+                  <option value="simple">シンプル（得点だけ）</option>
+                  <option value="analysis">分析モード（サーブ・選手別）</option>
+                </select>
+              </label>
+            </div>
+            <div class="settings-group">
               <h3>プレイヤー情報</h3>
               <label>
                 <span>ポジション</span>
@@ -247,6 +257,6 @@
         </div>
       </section>
     </main>
-    <script src="./game.js?v=20260611-two-screens"></script>
+    <script src="./game.js?v=20260611-analysis"></script>
   </body>
 </html>

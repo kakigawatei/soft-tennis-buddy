@@ -586,6 +586,7 @@ function ensurePreferences() {
       playerGoal: ""
     };
   }
+  if (!store.preferences.scoreMode) store.preferences.scoreMode = "simple";
 }
 
 const conditionOptions = {
@@ -660,7 +661,7 @@ function ensureMatchPrep() {
 
 const scoreCallNames = ["ゼロ", "ワン", "ツー", "スリー", "フォー", "ファイブ", "シックス"];
 
-function newScoreState(format = 7, opponent = "") {
+function newScoreState(format = 7, opponent = "", players = null) {
   return {
     format,
     opponent,
@@ -670,7 +671,11 @@ function newScoreState(format = 7, opponent = "") {
     finished: false,
     winner: null,
     saved: false,
-    history: []
+    history: [],
+    serveSide: "us",
+    faultCount: 0,
+    players: players || ["選手1", "選手2"],
+    log: []
   };
 }
 
@@ -678,7 +683,12 @@ function ensureScore() {
   if (!store.score || !store.score.games || !store.score.points) {
     store.score = newScoreState();
   }
-  if (!Array.isArray(store.score.history)) store.score.history = [];
+  const state = store.score;
+  if (!Array.isArray(state.history)) state.history = [];
+  if (state.serveSide !== "us" && state.serveSide !== "them") state.serveSide = "us";
+  if (typeof state.faultCount !== "number") state.faultCount = 0;
+  if (!Array.isArray(state.players) || state.players.length !== 2) state.players = ["選手1", "選手2"];
+  if (!Array.isArray(state.log)) state.log = [];
 }
 
 function scoreGamesToWin(format) {
@@ -720,17 +730,29 @@ function pushScoreHistory(state) {
     points: state.points,
     finalGame: state.finalGame,
     finished: state.finished,
-    winner: state.winner
+    winner: state.winner,
+    serveSide: state.serveSide,
+    faultCount: state.faultCount,
+    logLen: state.log.length
   }));
   if (state.history.length > 80) state.history.shift();
 }
 
-function addScorePoint(side) {
+function addScorePoint(side, info = {}) {
   ensureScore();
   const state = store.score;
   if (state.finished) return;
   pushScoreHistory(state);
   state.points[side] += 1;
+  state.faultCount = 0;
+  state.log.push({
+    g: state.games.us + state.games.them,
+    side,
+    player: info.player || null,
+    reason: info.reason || "point",
+    serve: state.serveSide
+  });
+  if (state.log.length > 300) state.log.shift();
   const target = scoreTargetPoints(state);
   const { us, them } = state.points;
   let gameWon = null;
@@ -739,6 +761,7 @@ function addScorePoint(side) {
     state.games[gameWon] += 1;
     state.points = { us: 0, them: 0 };
     state.finalGame = false;
+    state.serveSide = state.serveSide === "us" ? "them" : "us";
     const need = scoreGamesToWin(state.format);
     if (state.games[gameWon] >= need) {
       state.finished = true;
@@ -750,6 +773,22 @@ function addScorePoint(side) {
   saveStore();
   renderScoreBoard();
   announceScore(state, side, gameWon);
+}
+
+function registerScoreFault() {
+  ensureScore();
+  const state = store.score;
+  if (state.finished) return;
+  state.faultCount += 1;
+  if (state.faultCount >= 2) {
+    state.faultCount = 0;
+    const receiver = state.serveSide === "us" ? "them" : "us";
+    addScorePoint(receiver, { reason: "dfault" });
+    return;
+  }
+  saveStore();
+  renderScoreBoard();
+  setExpression("focus", 700);
 }
 
 function announceScore(state, side, gameWon) {
@@ -806,6 +845,9 @@ function undoScorePoint() {
   state.finalGame = snap.finalGame;
   state.finished = snap.finished;
   state.winner = snap.winner;
+  if (snap.serveSide) state.serveSide = snap.serveSide;
+  state.faultCount = snap.faultCount || 0;
+  if (typeof snap.logLen === "number") state.log = state.log.slice(0, snap.logLen);
   if (!state.finished) state.saved = false;
   saveStore();
   renderScoreBoard();
@@ -814,9 +856,33 @@ function undoScorePoint() {
 
 function resetScore(format) {
   ensureScore();
-  store.score = newScoreState(format ?? store.score.format, store.score.opponent);
+  store.score = newScoreState(format ?? store.score.format, store.score.opponent, store.score.players);
   saveStore();
   renderScoreBoard();
+}
+
+function scoreAnalysisStats(state) {
+  const stats = {
+    players: [{ win: 0, miss: 0 }, { win: 0, miss: 0 }],
+    dfUs: 0,
+    dfThem: 0,
+    otherWin: 0,
+    otherLose: 0
+  };
+  for (const entry of state.log) {
+    if (entry.reason === "dfault") {
+      if (entry.side === "us") stats.dfThem += 1;
+      else stats.dfUs += 1;
+    } else if (entry.side === "us") {
+      if (entry.player) stats.players[entry.player - 1].win += 1;
+      else stats.otherWin += 1;
+    } else if (entry.player) {
+      stats.players[entry.player - 1].miss += 1;
+    } else {
+      stats.otherLose += 1;
+    }
+  }
+  return stats;
 }
 
 function saveScoreToResults() {
@@ -825,12 +891,28 @@ function saveScoreToResults() {
   if (!state.finished || state.saved) return;
   const won = state.winner === "us";
   const opponent = scoreOpponentLabel(state);
+  let good = won ? "ゲームを取り切れた" : "最後まで集中して戦えた";
+  let next = won ? "勝てた形をもう一度確認する" : "取られた場面の入り方を見直す";
+  let focus = "mental";
+  if (store.preferences?.scoreMode === "analysis" && state.log.length) {
+    const stats = scoreAnalysisStats(state);
+    const [p1, p2] = state.players;
+    good = `得点: ${p1} ${stats.players[0].win}本 / ${p2} ${stats.players[1].win}本（相手ミスほか ${stats.otherWin}本）`;
+    if (stats.dfUs > 0) {
+      next = `ダブルフォルト${stats.dfUs}本をなくす`;
+      focus = "serve";
+    } else {
+      const missier = stats.players[0].miss >= stats.players[1].miss ? 0 : 1;
+      next = `ミス（${state.players[missier]} ${stats.players[missier].miss}本）の場面をペアで振り返る`;
+      focus = "pair";
+    }
+  }
   store.results.unshift({
     date: new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium" }).format(new Date()),
     title: `試合 vs ${opponent} ${state.games.us}-${state.games.them} ${won ? "勝ち" : "負け"}`,
-    good: won ? "ゲームを取り切れた" : "最後まで集中して戦えた",
-    next: won ? "勝てた形をもう一度確認する" : "取られた場面の入り方を見直す",
-    focus: "mental"
+    good,
+    next,
+    focus
   });
   state.saved = true;
   saveStore();
@@ -1023,6 +1105,8 @@ function syncPreferenceControls() {
   playerGoalInput.value = store.preferences.playerGoal || "";
   document.querySelector("#practiceRole").value = store.preferences.playerRole;
   document.querySelector("#practiceLevel").value = store.preferences.playerLevel;
+  const scoreModeSelect = document.querySelector("#scoreMode");
+  if (scoreModeSelect) scoreModeSelect.value = store.preferences.scoreMode;
 }
 
 function policyGoal() {
@@ -1984,48 +2068,122 @@ function renderMatchChecklist() {
   });
 }
 
+function renderScoreFlow(state) {
+  if (!state.log.length) return '<p class="score-flow-empty">ポイントを記録すると、試合の流れがここに並ぶよ。</p>';
+  const recent = state.log.slice(-30);
+  let lastGame = recent[0].g;
+  const dots = recent.map(entry => {
+    const divider = entry.g !== lastGame ? '<i class="flow-game"></i>' : "";
+    lastGame = entry.g;
+    const label = entry.reason === "dfault" ? "F" : entry.player ? String(entry.player) : "・";
+    return `${divider}<span class="flow-dot ${entry.side === "us" ? "us" : "them"}" title="${entry.side === "us" ? "得点" : "失点"}">${label}</span>`;
+  }).join("");
+  return `<div class="score-flow" aria-label="ポイントの流れ">${dots}</div>`;
+}
+
 function renderScoreBoard() {
   if (!scoreBoard) return;
   ensureScore();
+  ensurePreferences();
   const state = store.score;
+  const analysis = store.preferences.scoreMode === "analysis";
   const need = scoreGamesToWin(state.format);
   const opponent = scoreOpponentLabel(state);
+  const [p1, p2] = state.players;
+  const disabled = state.finished ? "disabled" : "";
   const statusLine = state.finished
     ? state.winner === "us" ? "マッチ勝利！おつかれさま！" : "マッチ終了。よく戦ったよ。"
     : state.finalGame
       ? "ファイナルゲーム: 7ポイント先取（6-6からは2点差）"
       : `${state.format}ゲームマッチ: ${need}ゲーム先取 / 1ゲームは4ポイント`;
-  scoreBoard.innerHTML = `
-    <article class="score-card">
-      <small>SCORE BOARD</small>
-      <div class="score-games" aria-label="ゲームカウント">
-        <div class="score-side"><b>こっち</b><strong>${state.games.us}</strong></div>
-        <span>ゲーム</span>
-        <div class="score-side"><b>${escapeHtml(opponent)}</b><strong>${state.games.them}</strong></div>
-      </div>
-      <p class="score-call">${escapeHtml(scoreCall(state))}</p>
-      <div class="score-points">
-        <button id="scoreUs" type="button" ${state.finished ? "disabled" : ""}><strong>${state.points.us}</strong><span>こっち +1</span></button>
-        <button id="scoreThem" type="button" ${state.finished ? "disabled" : ""}><strong>${state.points.them}</strong><span>${escapeHtml(opponent)} +1</span></button>
-      </div>
-      <p class="score-status">${statusLine}</p>
-      <div class="score-tools">
-        <button id="scoreUndo" type="button">1本戻す</button>
-        <button id="scoreReset" type="button">リセット</button>
-        ${state.finished && !state.saved ? '<button id="scoreToResult" class="score-save" type="button">結果メモに残す</button>' : ""}
-      </div>
-      <div class="score-setup">
-        <label><span>試合形式</span>
-          <select id="scoreFormat">
-            ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
-          </select>
-        </label>
-        <label><span>相手の名前</span>
-          <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
-        </label>
-      </div>
-    </article>
+  const scoreHead = `
+    <div class="score-games" aria-label="ゲームカウント">
+      <div class="score-side"><b>こっち</b><strong>${state.games.us}</strong></div>
+      <span>ゲーム</span>
+      <div class="score-side"><b>${escapeHtml(opponent)}</b><strong>${state.games.them}</strong></div>
+    </div>
+    <p class="score-call">${escapeHtml(scoreCall(state))}</p>
   `;
+  const tools = `
+    <p class="score-status">${statusLine}</p>
+    <div class="score-tools">
+      <button id="scoreUndo" type="button">1本戻す</button>
+      <button id="scoreReset" type="button">リセット</button>
+      ${state.finished && !state.saved ? '<button id="scoreToResult" class="score-save" type="button">結果メモに残す</button>' : ""}
+    </div>
+  `;
+  if (!analysis) {
+    scoreBoard.innerHTML = `
+      <article class="score-card">
+        <small>SCORE BOARD</small>
+        ${scoreHead}
+        <div class="score-points">
+          <button id="scoreUs" type="button" ${disabled}><strong>${state.points.us}</strong><span>こっち +1</span></button>
+          <button id="scoreThem" type="button" ${disabled}><strong>${state.points.them}</strong><span>${escapeHtml(opponent)} +1</span></button>
+        </div>
+        ${tools}
+        <div class="score-setup">
+          <label><span>試合形式</span>
+            <select id="scoreFormat">
+              ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
+            </select>
+          </label>
+          <label><span>相手の名前</span>
+            <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+          </label>
+        </div>
+      </article>
+    `;
+  } else {
+    const stats = scoreAnalysisStats(state);
+    const serveUs = state.serveSide === "us";
+    scoreBoard.innerHTML = `
+      <article class="score-card">
+        <small>SCORE BOARD・分析モード</small>
+        <div class="serve-row" aria-label="このゲームのサーブ側">
+          <button id="serveUs" class="serve-chip ${serveUs ? "active" : ""}" type="button" ${disabled}>サーブゲーム</button>
+          <button id="serveThem" class="serve-chip ${serveUs ? "" : "active"}" type="button" ${disabled}>レシーブゲーム</button>
+        </div>
+        ${scoreHead}
+        <div class="score-point-count"><span>${state.points.us}</span> − <span>${state.points.them}</span></div>
+        <div class="analysis-grid">
+          <button class="ana-win" id="scoreP1Win" type="button" ${disabled}>${escapeHtml(p1)}<b>が決めた +1</b></button>
+          <button class="ana-win" id="scoreP2Win" type="button" ${disabled}>${escapeHtml(p2)}<b>が決めた +1</b></button>
+          <button class="ana-miss" id="scoreP1Miss" type="button" ${disabled}>${escapeHtml(p1)}<b>のミス −1</b></button>
+          <button class="ana-miss" id="scoreP2Miss" type="button" ${disabled}>${escapeHtml(p2)}<b>のミス −1</b></button>
+          <button class="ana-other-win" id="scoreUsOther" type="button" ${disabled}>相手ミスで<b>得点 +1</b></button>
+          <button class="ana-other-miss" id="scoreThemOther" type="button" ${disabled}>相手に<b>決められた −1</b></button>
+        </div>
+        <button id="scoreFault" class="fault-button ${state.faultCount === 1 ? "warn" : ""}" type="button" ${disabled}>
+          ${state.faultCount === 1 ? "フォルト 1本目 — もう1回でWフォルト" : "フォルト"}
+          <b>${serveUs ? "Wフォルトで失点" : `${escapeHtml(opponent)}のWフォルトで得点`}</b>
+        </button>
+        <div class="score-stats">
+          <span>${escapeHtml(p1)}: 得点${stats.players[0].win} / ミス${stats.players[0].miss}</span>
+          <span>${escapeHtml(p2)}: 得点${stats.players[1].win} / ミス${stats.players[1].miss}</span>
+          <span>Wフォルト: こっち${stats.dfUs} / 相手${stats.dfThem}</span>
+        </div>
+        ${renderScoreFlow(state)}
+        ${tools}
+        <div class="score-setup">
+          <label><span>試合形式</span>
+            <select id="scoreFormat">
+              ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
+            </select>
+          </label>
+          <label><span>相手の名前</span>
+            <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+          </label>
+          <label><span>選手1の名前</span>
+            <input id="scorePlayer1" maxlength="8" value="${escapeHtml(p1)}" autocomplete="off" />
+          </label>
+          <label><span>選手2の名前</span>
+            <input id="scorePlayer2" maxlength="8" value="${escapeHtml(p2)}" autocomplete="off" />
+          </label>
+        </div>
+      </article>
+    `;
+  }
   scoreBoard.querySelector("#scoreFormat")?.addEventListener("change", event => {
     const format = Number(event.target.value) || 7;
     resetScore(format);
@@ -2038,6 +2196,35 @@ function renderScoreBoard() {
   });
   scoreBoard.querySelector("#scoreUs")?.addEventListener("click", () => addScorePoint("us"));
   scoreBoard.querySelector("#scoreThem")?.addEventListener("click", () => addScorePoint("them"));
+  scoreBoard.querySelector("#serveUs")?.addEventListener("click", () => {
+    state.serveSide = "us";
+    state.faultCount = 0;
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#serveThem")?.addEventListener("click", () => {
+    state.serveSide = "them";
+    state.faultCount = 0;
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#scoreP1Win")?.addEventListener("click", () => addScorePoint("us", { player: 1 }));
+  scoreBoard.querySelector("#scoreP2Win")?.addEventListener("click", () => addScorePoint("us", { player: 2 }));
+  scoreBoard.querySelector("#scoreP1Miss")?.addEventListener("click", () => addScorePoint("them", { player: 1, reason: "miss" }));
+  scoreBoard.querySelector("#scoreP2Miss")?.addEventListener("click", () => addScorePoint("them", { player: 2, reason: "miss" }));
+  scoreBoard.querySelector("#scoreUsOther")?.addEventListener("click", () => addScorePoint("us"));
+  scoreBoard.querySelector("#scoreThemOther")?.addEventListener("click", () => addScorePoint("them"));
+  scoreBoard.querySelector("#scoreFault")?.addEventListener("click", registerScoreFault);
+  scoreBoard.querySelector("#scorePlayer1")?.addEventListener("change", event => {
+    state.players[0] = event.target.value.trim() || "選手1";
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#scorePlayer2")?.addEventListener("change", event => {
+    state.players[1] = event.target.value.trim() || "選手2";
+    saveStore();
+    renderScoreBoard();
+  });
   scoreBoard.querySelector("#scoreUndo")?.addEventListener("click", undoScorePoint);
   scoreBoard.querySelector("#scoreReset")?.addEventListener("click", () => {
     resetScore();
@@ -2534,6 +2721,16 @@ coachPolicySelect.addEventListener("change", () => {
   saveStore();
   makePracticePlan(false);
   petSay(styleReply("コーチ方針を更新したよ。練習メニューにも反映していくね。"), "focus");
+});
+
+document.querySelector("#scoreMode")?.addEventListener("change", event => {
+  ensurePreferences();
+  store.preferences.scoreMode = event.target.value === "analysis" ? "analysis" : "simple";
+  saveStore();
+  renderScoreBoard();
+  petSay(store.preferences.scoreMode === "analysis"
+    ? "分析モードにしたよ。サーブ側と、誰の得点・ミスかも記録して、試合の流れを見ていこう。"
+    : "シンプルモードにしたよ。得点だけサクッと数えよう。", "focus");
 });
 
 playerRoleSelect.addEventListener("change", () => {
