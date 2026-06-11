@@ -1543,21 +1543,29 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
 }
 
+.score-card-compact {
+  gap: 8px;
+  padding: 11px 12px;
+}
+
 .serve-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
 }
 
 .serve-chip {
-  min-height: 34px;
-  padding: 7px 10px;
+  min-height: 30px;
+  padding: 5px 4px;
   border-radius: 999px;
   color: var(--muted);
   background: rgba(255,255,255,.8);
   border: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .serve-chip.active {
@@ -1567,36 +1575,63 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 3px 0 rgba(20,128,150,.18);
 }
 
-.score-point-count {
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  gap: 10px;
+.score-strip {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.8);
+  box-shadow: 0 3px 10px rgba(24,48,76,.06);
+}
+
+.score-strip strong {
   color: #17284e;
-  font-size: 26px;
+  font-size: 23px;
   font-weight: 900;
+  white-space: nowrap;
+}
+
+.strip-games {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.strip-games b {
+  color: #17284e;
+  font-size: 14px;
+}
+
+.strip-call {
+  justify-self: end;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: right;
 }
 
 .analysis-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
 }
 
 .analysis-grid button {
   display: grid;
   justify-items: center;
-  gap: 2px;
-  min-height: 52px;
-  padding: 8px 6px;
-  border-radius: 15px;
+  gap: 1px;
+  min-height: 40px;
+  padding: 5px 6px;
+  border-radius: 13px;
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
 }
 
 .analysis-grid button b {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 900;
   opacity: .92;
 }
@@ -1631,9 +1666,9 @@ input:focus, select:focus, textarea:focus {
 .fault-button {
   display: grid;
   justify-items: center;
-  gap: 2px;
-  min-height: 48px;
-  padding: 8px 10px;
+  gap: 1px;
+  min-height: 46px;
+  padding: 7px 10px;
   border-radius: 15px;
   color: #5b4a14;
   background: linear-gradient(135deg, #ffe8a3, var(--sun));

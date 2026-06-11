@@ -673,6 +673,7 @@ function newScoreState(format = 7, opponent = "", players = null) {
     saved: false,
     history: [],
     serveSide: "us",
+    server: 1,
     faultCount: 0,
     players: players || ["選手1", "選手2"],
     log: []
@@ -686,6 +687,7 @@ function ensureScore() {
   const state = store.score;
   if (!Array.isArray(state.history)) state.history = [];
   if (state.serveSide !== "us" && state.serveSide !== "them") state.serveSide = "us";
+  if (state.server !== 1 && state.server !== 2) state.server = 1;
   if (typeof state.faultCount !== "number") state.faultCount = 0;
   if (!Array.isArray(state.players) || state.players.length !== 2) state.players = ["選手1", "選手2"];
   if (!Array.isArray(state.log)) state.log = [];
@@ -732,6 +734,7 @@ function pushScoreHistory(state) {
     finished: state.finished,
     winner: state.winner,
     serveSide: state.serveSide,
+    server: state.server,
     faultCount: state.faultCount,
     logLen: state.log.length
   }));
@@ -744,14 +747,17 @@ function addScorePoint(side, info = {}) {
   if (state.finished) return;
   pushScoreHistory(state);
   state.points[side] += 1;
-  state.faultCount = 0;
+  const ourServe = state.serveSide === "us";
   state.log.push({
     g: state.games.us + state.games.them,
     side,
     player: info.player || null,
     reason: info.reason || "point",
-    serve: state.serveSide
+    serve: state.serveSide,
+    server: ourServe ? state.server : null,
+    firstIn: ourServe ? state.faultCount === 0 && info.reason !== "dfault" : null
   });
+  state.faultCount = 0;
   if (state.log.length > 300) state.log.shift();
   const target = scoreTargetPoints(state);
   const { us, them } = state.points;
@@ -762,6 +768,7 @@ function addScorePoint(side, info = {}) {
     state.points = { us: 0, them: 0 };
     state.finalGame = false;
     state.serveSide = state.serveSide === "us" ? "them" : "us";
+    if (state.serveSide === "us") state.server = state.server === 1 ? 2 : 1;
     const need = scoreGamesToWin(state.format);
     if (state.games[gameWon] >= need) {
       state.finished = true;
@@ -846,6 +853,7 @@ function undoScorePoint() {
   state.finished = snap.finished;
   state.winner = snap.winner;
   if (snap.serveSide) state.serveSide = snap.serveSide;
+  if (snap.server === 1 || snap.server === 2) state.server = snap.server;
   state.faultCount = snap.faultCount || 0;
   if (typeof snap.logLen === "number") state.log = state.log.slice(0, snap.logLen);
   if (!state.finished) state.saved = false;
@@ -863,13 +871,21 @@ function resetScore(format) {
 
 function scoreAnalysisStats(state) {
   const stats = {
-    players: [{ win: 0, miss: 0 }, { win: 0, miss: 0 }],
+    players: [
+      { win: 0, miss: 0, servePts: 0, firstIn: 0 },
+      { win: 0, miss: 0, servePts: 0, firstIn: 0 }
+    ],
     dfUs: 0,
     dfThem: 0,
     otherWin: 0,
     otherLose: 0
   };
   for (const entry of state.log) {
+    if (entry.server === 1 || entry.server === 2) {
+      const server = stats.players[entry.server - 1];
+      server.servePts += 1;
+      if (entry.firstIn) server.firstIn += 1;
+    }
     if (entry.reason === "dfault") {
       if (entry.side === "us") stats.dfThem += 1;
       else stats.dfUs += 1;
@@ -883,6 +899,11 @@ function scoreAnalysisStats(state) {
     }
   }
   return stats;
+}
+
+function firstServeText(playerStats) {
+  if (!playerStats.servePts) return "—";
+  return `${Math.round(playerStats.firstIn / playerStats.servePts * 100)}% (${playerStats.firstIn}/${playerStats.servePts})`;
 }
 
 function saveScoreToResults() {
@@ -2138,14 +2159,17 @@ function renderScoreBoard() {
     const stats = scoreAnalysisStats(state);
     const serveUs = state.serveSide === "us";
     scoreBoard.innerHTML = `
-      <article class="score-card">
-        <small>SCORE BOARD・分析モード</small>
-        <div class="serve-row" aria-label="このゲームのサーブ側">
-          <button id="serveUs" class="serve-chip ${serveUs ? "active" : ""}" type="button" ${disabled}>サーブゲーム</button>
-          <button id="serveThem" class="serve-chip ${serveUs ? "" : "active"}" type="button" ${disabled}>レシーブゲーム</button>
+      <article class="score-card score-card-compact">
+        <div class="serve-row" aria-label="このゲームのサーブ">
+          <button id="serveP1" class="serve-chip ${serveUs && state.server === 1 ? "active" : ""}" type="button" ${disabled}>${escapeHtml(p1)}サーブ</button>
+          <button id="serveP2" class="serve-chip ${serveUs && state.server === 2 ? "active" : ""}" type="button" ${disabled}>${escapeHtml(p2)}サーブ</button>
+          <button id="serveThem" class="serve-chip ${serveUs ? "" : "active"}" type="button" ${disabled}>レシーブ</button>
         </div>
-        ${scoreHead}
-        <div class="score-point-count"><span>${state.points.us}</span> − <span>${state.points.them}</span></div>
+        <div class="score-strip">
+          <span class="strip-games">G <b>${state.games.us}-${state.games.them}</b></span>
+          <strong>${state.points.us} − ${state.points.them}</strong>
+          <span class="strip-call">${escapeHtml(scoreCall(state))}</span>
+        </div>
         <div class="analysis-grid">
           <button class="ana-win" id="scoreP1Win" type="button" ${disabled}>${escapeHtml(p1)}<b>が決めた +1</b></button>
           <button class="ana-win" id="scoreP2Win" type="button" ${disabled}>${escapeHtml(p2)}<b>が決めた +1</b></button>
@@ -2161,11 +2185,18 @@ function renderScoreBoard() {
         <div class="score-stats">
           <span>${escapeHtml(p1)}: 得点${stats.players[0].win} / ミス${stats.players[0].miss}</span>
           <span>${escapeHtml(p2)}: 得点${stats.players[1].win} / ミス${stats.players[1].miss}</span>
+          <span>1stサーブ: ${escapeHtml(p1)} ${firstServeText(stats.players[0])} / ${escapeHtml(p2)} ${firstServeText(stats.players[1])}</span>
           <span>Wフォルト: こっち${stats.dfUs} / 相手${stats.dfThem}</span>
         </div>
         ${renderScoreFlow(state)}
         ${tools}
         <div class="score-setup">
+          <label><span>選手1の名前</span>
+            <input id="scorePlayer1" maxlength="8" placeholder="例: けい" value="${escapeHtml(p1)}" autocomplete="off" />
+          </label>
+          <label><span>選手2の名前</span>
+            <input id="scorePlayer2" maxlength="8" placeholder="例: ゆう" value="${escapeHtml(p2)}" autocomplete="off" />
+          </label>
           <label><span>試合形式</span>
             <select id="scoreFormat">
               ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
@@ -2173,12 +2204,6 @@ function renderScoreBoard() {
           </label>
           <label><span>相手の名前</span>
             <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
-          </label>
-          <label><span>選手1の名前</span>
-            <input id="scorePlayer1" maxlength="8" value="${escapeHtml(p1)}" autocomplete="off" />
-          </label>
-          <label><span>選手2の名前</span>
-            <input id="scorePlayer2" maxlength="8" value="${escapeHtml(p2)}" autocomplete="off" />
           </label>
         </div>
       </article>
@@ -2196,8 +2221,16 @@ function renderScoreBoard() {
   });
   scoreBoard.querySelector("#scoreUs")?.addEventListener("click", () => addScorePoint("us"));
   scoreBoard.querySelector("#scoreThem")?.addEventListener("click", () => addScorePoint("them"));
-  scoreBoard.querySelector("#serveUs")?.addEventListener("click", () => {
+  scoreBoard.querySelector("#serveP1")?.addEventListener("click", () => {
     state.serveSide = "us";
+    state.server = 1;
+    state.faultCount = 0;
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#serveP2")?.addEventListener("click", () => {
+    state.serveSide = "us";
+    state.server = 2;
     state.faultCount = 0;
     saveStore();
     renderScoreBoard();
