@@ -177,12 +177,13 @@ button { border: 0; cursor: pointer; }
   padding: 12px;
   max-height: 220px;
   overflow-y: auto;
-  border: 2px solid rgba(255,255,255,.68);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 95% 14%, rgba(255,255,255,.82), transparent 28%),
-    linear-gradient(135deg, rgba(255,255,255,.9), rgba(230,251,248,.82));
-  box-shadow: 0 8px 18px rgba(24,48,76,.07), inset 0 0 0 1px rgba(24,48,76,.08);
+}
+
+#today .daily-plan {
+  margin: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
 }
 
 .daily-plan header {
@@ -442,9 +443,9 @@ input:focus, select:focus, textarea:focus {
 .tabs {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  padding: 9px 14px 11px;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  padding: 9px 12px 11px;
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, .6);
   backdrop-filter: blur(8px);
@@ -456,8 +457,9 @@ input:focus, select:focus, textarea:focus {
   border-radius: 15px;
   color: var(--muted);
   background: rgba(255,255,255,.58);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .tab.active {

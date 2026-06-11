@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#79d7df" />
     <title>ナンシキ村</title>
-    <link rel="stylesheet" href="./style.css?v=20260611-settings-scroll" />
+    <link rel="stylesheet" href="./style.css?v=20260611-two-screens" />
   </head>
   <body>
     <main class="app">
@@ -39,9 +39,11 @@
           <button id="rallyButton" class="rally-button" type="button">壁打ち</button>
         </section>
 
-        <section id="dailyPlan" class="daily-plan" aria-live="polite"></section>
+        <section id="today" class="panel active">
+          <div id="dailyPlan" class="daily-plan" aria-live="polite"></div>
+        </section>
 
-        <section id="chat" class="panel active">
+        <section id="chat" class="panel">
           <div id="chatLog" class="chat-log" aria-live="polite"></div>
           <div class="chat-dock">
             <form id="chatForm" class="chat-form">
@@ -148,7 +150,8 @@
         </section>
 
         <nav class="tabs" aria-label="機能切り替え">
-          <button class="tab active" data-tab="chat" type="button">相談</button>
+          <button class="tab active" data-tab="today" type="button">今日</button>
+          <button class="tab" data-tab="chat" type="button">相談</button>
           <button class="tab" data-tab="practice" type="button">練習</button>
           <button class="tab" data-tab="match" type="button">試合前</button>
           <button class="tab" data-tab="score" type="button">スコア</button>
@@ -244,6 +247,6 @@
         </div>
       </section>
     </main>
-    <script src="./game.js?v=20260611-title"></script>
+    <script src="./game.js?v=20260611-two-screens"></script>
   </body>
 </html>

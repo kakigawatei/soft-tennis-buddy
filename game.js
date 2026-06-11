@@ -2678,7 +2678,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
     tab.classList.add("active");
     document.querySelector(`#${tab.dataset.tab}`).classList.add("active");
-    const tabMood = { chat: "calm", practice: "focus", match: "focus", score: "focus", result: "happy", rules: "focus" }[tab.dataset.tab] || "calm";
+    const tabMood = { today: "happy", chat: "calm", practice: "focus", match: "focus", score: "focus", result: "happy", rules: "focus" }[tab.dataset.tab] || "calm";
     setExpression(tabMood, 1800);
   });
 });
