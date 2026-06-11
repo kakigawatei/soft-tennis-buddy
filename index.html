@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#79d7df" />
     <title>ナンシキ村</title>
-    <link rel="stylesheet" href="./style.css?v=20260611-analysis2" />
+    <link rel="stylesheet" href="./style.css?v=20260611-match-detail" />
   </head>
   <body>
     <main class="app">
@@ -109,7 +109,10 @@
         </section>
 
         <section id="result" class="panel">
-          <h2>今日の結果メモ</h2>
+          <div class="result-tabs" aria-label="記録の種類">
+            <button class="result-tab active" data-result-view="practice" type="button">練習の記録</button>
+            <button class="result-tab" data-result-view="match" type="button">試合の記録</button>
+          </div>
           <div id="resultCoach" class="result-coach" aria-live="polite"></div>
           <div id="weeklyReview" class="weekly-review" aria-live="polite"></div>
           <div id="resultStats" class="result-stats" aria-live="polite"></div>
@@ -256,6 +259,6 @@
         </div>
       </section>
     </main>
-    <script src="./game.js?v=20260611-serve-p1-first"></script>
+    <script src="./game.js?v=20260611-match-detail"></script>
   </body>
 </html>

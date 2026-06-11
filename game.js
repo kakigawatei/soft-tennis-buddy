@@ -100,6 +100,9 @@ const store = {
 
 if (store.name === "こん") store.name = "コン";
 if (store.name === "ナンシキ村のリー") store.name = "リー";
+for (const result of store.results) {
+  if (!result.type) result.type = result.title?.startsWith("試合") ? "match" : "practice";
+}
 
 const palettes = {
   mint: { cap: "#ff514d", side: "#17284e", bill: "#78e0df", cheek: "#ff65bd", accent: "#40c7bd" },
@@ -883,8 +886,8 @@ function resetScore(format) {
 function scoreAnalysisStats(state) {
   const stats = {
     players: [
-      { win: 0, miss: 0, servePts: 0, firstIn: 0 },
-      { win: 0, miss: 0, servePts: 0, firstIn: 0 }
+      { win: 0, miss: 0, servePts: 0, firstIn: 0, df: 0 },
+      { win: 0, miss: 0, servePts: 0, firstIn: 0, df: 0 }
     ],
     dfUs: 0,
     dfThem: 0,
@@ -896,6 +899,7 @@ function scoreAnalysisStats(state) {
       const server = stats.players[entry.server - 1];
       server.servePts += 1;
       if (entry.firstIn) server.firstIn += 1;
+      if (entry.reason === "dfault") server.df += 1;
     }
     if (entry.reason === "dfault") {
       if (entry.side === "us") stats.dfThem += 1;
@@ -917,6 +921,11 @@ function firstServeText(playerStats) {
   return `${Math.round(playerStats.firstIn / playerStats.servePts * 100)}% (${playerStats.firstIn}/${playerStats.servePts})`;
 }
 
+function dfRateText(playerStats) {
+  if (!playerStats.servePts) return "—";
+  return `${Math.round(playerStats.df / playerStats.servePts * 100)}% (${playerStats.df}/${playerStats.servePts})`;
+}
+
 function saveScoreToResults() {
   ensureScore();
   const state = store.score;
@@ -931,7 +940,8 @@ function saveScoreToResults() {
     const [p1, p2] = state.players;
     good = `得点: ${p1} ${stats.players[0].win}本 / ${p2} ${stats.players[1].win}本（相手ミスほか ${stats.otherWin}本）`;
     if (stats.dfUs > 0) {
-      next = `ダブルフォルト${stats.dfUs}本をなくす`;
+      const dfier = stats.players[0].df >= stats.players[1].df ? 0 : 1;
+      next = `ダブルフォルト（${state.players[dfier]} ${stats.players[dfier].df}本）をなくす`;
       focus = "serve";
     } else {
       const missier = stats.players[0].miss >= stats.players[1].miss ? 0 : 1;
@@ -944,7 +954,16 @@ function saveScoreToResults() {
     title: `試合 vs ${opponent} ${state.games.us}-${state.games.them} ${won ? "勝ち" : "負け"}`,
     good,
     next,
-    focus
+    focus,
+    type: "match",
+    match: {
+      format: state.format,
+      opponent,
+      won,
+      games: { ...state.games },
+      players: [...state.players],
+      log: state.log.slice(-200)
+    }
   });
   state.saved = true;
   saveStore();
@@ -1959,29 +1978,114 @@ function renderResultStats() {
   `;
 }
 
+let resultView = "practice";
+
+function matchProgressionSvg(match) {
+  const log = match.log || [];
+  if (log.length < 2) return "";
+  let diff = 0;
+  const diffs = [0];
+  for (const entry of log) {
+    diff += entry.side === "us" ? 1 : -1;
+    diffs.push(diff);
+  }
+  const w = 320, h = 96, pad = 10;
+  const maxAbs = Math.max(2, ...diffs.map(Math.abs));
+  const x = i => pad + (w - 2 * pad) * i / (diffs.length - 1);
+  const y = v => h / 2 - v / maxAbs * (h / 2 - pad);
+  const points = diffs.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  let gameLines = "";
+  for (let i = 1; i < log.length; i++) {
+    if (log[i].g !== log[i - 1].g) {
+      gameLines += `<line x1="${x(i).toFixed(1)}" y1="${pad}" x2="${x(i).toFixed(1)}" y2="${h - pad}" stroke="rgba(24,48,76,.14)" stroke-width="1"/>`;
+    }
+  }
+  return `
+    <svg class="match-progress" viewBox="0 0 ${w} ${h}" aria-label="得点差の推移">
+      <line x1="${pad}" y1="${h / 2}" x2="${w - pad}" y2="${h / 2}" stroke="rgba(24,48,76,.25)" stroke-dasharray="3 3"/>
+      ${gameLines}
+      <polyline points="${points}" fill="none" stroke="#40c7bd" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="${pad}" y="${pad + 2}" font-size="9" font-weight="bold" fill="#40c7bd">↑リード</text>
+      <text x="${pad}" y="${h - pad + 8}" font-size="9" font-weight="bold" fill="#ff6b62">↓ビハインド</text>
+    </svg>
+  `;
+}
+
+function statBarRow(label, value, max, cls) {
+  const width = max ? Math.max(4, Math.round(value / max * 100)) : 4;
+  return `<div class="stat-row"><span>${escapeHtml(label)}</span><div class="stat-bar"><i class="${cls}" style="width:${width}%"></i></div><b>${value}</b></div>`;
+}
+
+function renderMatchDetail(item) {
+  const match = item.match;
+  if (!match?.log?.length) {
+    return `<div class="match-detail"><p class="detail-note">この試合は分析データがないよ。分析モードで記録すると、得点の流れや選手別スタッツが見られるよ。</p></div>`;
+  }
+  const stats = scoreAnalysisStats({ log: match.log });
+  const [p1, p2] = match.players || ["選手1", "選手2"];
+  const barMax = Math.max(1, stats.players[0].win, stats.players[1].win, stats.players[0].miss, stats.players[1].miss, stats.otherWin, stats.otherLose);
+  return `
+    <div class="match-detail">
+      <small>得点差の推移（縦線=ゲームの区切り）</small>
+      ${matchProgressionSvg(match)}
+      <small>ポイントの流れ</small>
+      ${renderScoreFlow({ log: match.log })}
+      <small>得点</small>
+      ${statBarRow(p1, stats.players[0].win, barMax, "bar-win")}
+      ${statBarRow(p2, stats.players[1].win, barMax, "bar-win")}
+      ${statBarRow("相手ミス他", stats.otherWin, barMax, "bar-win")}
+      <small>失点</small>
+      ${statBarRow(`${p1}ミス`, stats.players[0].miss, barMax, "bar-miss")}
+      ${statBarRow(`${p2}ミス`, stats.players[1].miss, barMax, "bar-miss")}
+      ${statBarRow("相手に決められた", stats.otherLose, barMax, "bar-miss")}
+      <div class="detail-rates">
+        <span>1stサーブ: ${escapeHtml(p1)} ${firstServeText(stats.players[0])} / ${escapeHtml(p2)} ${firstServeText(stats.players[1])}</span>
+        <span>Wフォルト率: ${escapeHtml(p1)} ${dfRateText(stats.players[0])} / ${escapeHtml(p2)} ${dfRateText(stats.players[1])}</span>
+        <span>相手のWフォルト: ${stats.dfThem}本</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderResults() {
   renderResultCoach();
   renderWeeklyReview();
   renderResultStats();
   resultList.innerHTML = "";
-  if (!store.results.length) {
+  const items = store.results.filter(item => (item.type || "practice") === resultView);
+  if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "result-item";
-    empty.textContent = "まだ記録はないよ。練習後に1つだけでも残すと、次のメニューが作りやすくなる。";
+    empty.textContent = resultView === "match"
+      ? "まだ試合の記録はないよ。スコアタブで試合をつけて「結果メモに残す」と、ここに並ぶよ。"
+      : "まだ記録はないよ。練習後に1つだけでも残すと、次のメニューが作りやすくなる。";
     resultList.append(empty);
     return;
   }
-  for (const item of store.results) {
+  for (const item of items) {
     const analysis = item.focus ? resultFocuses[item.focus] : analyzeResult(`${item.good} ${item.next}`);
     const node = document.createElement("article");
-    node.className = "result-item";
+    const isMatch = (item.type || "practice") === "match";
+    node.className = `result-item${isMatch ? " match" : ""}`;
     node.innerHTML = `
       <time>${item.date}</time>
       <strong>${escapeHtml(item.title)}</strong>
-      <div class="result-tags"><span>${analysis.icon} ${analysis.label}</span></div>
+      <div class="result-tags"><span>${analysis.icon} ${analysis.label}</span>${isMatch ? '<span class="tap-hint">タップで詳細分析</span>' : ""}</div>
       <p>できた: ${escapeHtml(item.good)}</p>
       <p>次: ${escapeHtml(item.next)}</p>
     `;
+    if (isMatch) {
+      node.addEventListener("click", () => {
+        const existing = node.querySelector(".match-detail");
+        if (existing) {
+          existing.remove();
+          node.classList.remove("expanded");
+        } else {
+          node.insertAdjacentHTML("beforeend", renderMatchDetail(item));
+          node.classList.add("expanded");
+        }
+      });
+    }
     resultList.append(node);
   }
 }
@@ -2197,7 +2301,7 @@ function renderScoreBoard() {
           <span>${escapeHtml(p1)}: 得点${stats.players[0].win} / ミス${stats.players[0].miss}</span>
           <span>${escapeHtml(p2)}: 得点${stats.players[1].win} / ミス${stats.players[1].miss}</span>
           <span>1stサーブ: ${escapeHtml(p1)} ${firstServeText(stats.players[0])} / ${escapeHtml(p2)} ${firstServeText(stats.players[1])}</span>
-          <span>Wフォルト: こっち${stats.dfUs} / 相手${stats.dfThem}</span>
+          <span>Wフォルト率: ${escapeHtml(p1)} ${dfRateText(stats.players[0])} / ${escapeHtml(p2)} ${dfRateText(stats.players[1])}（相手${stats.dfThem}本）</span>
         </div>
         ${renderScoreFlow(state)}
         ${tools}
@@ -2954,7 +3058,9 @@ resultForm.addEventListener("submit", event => {
   const analysis = analyzeResult(`${title} ${good} ${next}`);
   store.results.unshift({
     date: new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium" }).format(new Date()),
-    title, good, next, focus: Object.entries(resultFocuses).find(([, value]) => value === analysis)?.[0] || "mental"
+    title, good, next,
+    focus: Object.entries(resultFocuses).find(([, value]) => value === analysis)?.[0] || "mental",
+    type: "practice"
   });
   saveStore();
   renderResults();
@@ -2965,6 +3071,16 @@ resultForm.addEventListener("submit", event => {
     ? `記録できた！次は${analysis.label}を育てよう。いい流れ、作れるよ！`
     : `記録できたよ。次は${analysis.label}を少し育てると、次の一歩につながりそう。`;
   petSay(resultMessage, "happy");
+});
+
+document.querySelectorAll("[data-result-view]").forEach(button => {
+  button.addEventListener("click", () => {
+    resultView = button.dataset.resultView;
+    document.querySelectorAll("[data-result-view]").forEach(x => x.classList.toggle("active", x === button));
+    document.querySelector("#result").classList.toggle("view-match", resultView === "match");
+    renderResults();
+    setExpression(resultView === "match" ? "focus" : "happy", 1200);
+  });
 });
 
 ruleSearch.addEventListener("input", () => renderRules(ruleSearch.value));

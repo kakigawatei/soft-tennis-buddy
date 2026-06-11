@@ -776,6 +776,123 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 4px 0 rgba(207,77,67,.2);
 }
 
+.result-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 0 0 12px;
+}
+
+.result-tab {
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.7);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.result-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #49aee8);
+  border-color: transparent;
+  box-shadow: 0 3px 0 rgba(20,128,150,.18);
+}
+
+#result.view-match #resultCoach,
+#result.view-match #weeklyReview,
+#result.view-match #resultStats,
+#result.view-match #resultForm {
+  display: none;
+}
+
+.result-item.match {
+  cursor: pointer;
+}
+
+.tap-hint {
+  color: var(--accent);
+}
+
+.match-detail {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+  padding: 10px;
+  border-radius: 15px;
+  background: rgba(236,250,247,.85);
+  border: 1px solid rgba(64,199,189,.25);
+}
+
+.match-detail small {
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.detail-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.match-progress {
+  display: block;
+  width: 100%;
+  height: 96px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.85);
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 26px;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #496a7a;
+}
+
+.stat-row b {
+  text-align: right;
+  color: #17284e;
+}
+
+.stat-bar {
+  height: 11px;
+  border-radius: 999px;
+  background: rgba(24,48,76,.08);
+  overflow: hidden;
+}
+
+.stat-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.stat-bar .bar-win {
+  background: linear-gradient(90deg, var(--accent), #49aee8);
+}
+
+.stat-bar .bar-miss {
+  background: linear-gradient(90deg, var(--accent-2), #ff955d);
+}
+
+.detail-rates {
+  display: grid;
+  gap: 3px;
+  color: #516f80;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
 .result-grid {
   display: grid;
   gap: 10px;
