@@ -376,11 +376,9 @@ button { border: 0; cursor: pointer; }
 
 .bond-log {
   display: grid;
-  gap: 4px;
-  max-height: 38px;
+  gap: 5px;
   margin: 0;
   padding: 0;
-  overflow: hidden;
   list-style: none;
 }
 
