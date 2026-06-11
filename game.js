@@ -49,7 +49,7 @@ const CHARACTERS = {
     expressions: EXPRESSIONS
   },
   lee: {
-    displayName: "ナンシキ村のリー",
+    displayName: "リー",
     fullName: "ナンシキ村のリー",
     expressions: {
       calm: "./assets/lee-calm.png",
@@ -99,6 +99,7 @@ const store = {
 };
 
 if (store.name === "こん") store.name = "コン";
+if (store.name === "ナンシキ村のリー") store.name = "リー";
 
 const palettes = {
   mint: { cap: "#ff514d", side: "#17284e", bill: "#78e0df", cheek: "#ff65bd", accent: "#40c7bd" },
