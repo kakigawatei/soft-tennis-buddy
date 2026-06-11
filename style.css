@@ -1041,6 +1041,10 @@ input:focus, select:focus, textarea:focus {
   gap: 13px;
   margin: 0;
   padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
+  max-height: calc(100% - 42px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: 28px 28px 0 0;
   background: rgba(255,255,255,.96);
   box-shadow: 0 -18px 45px rgba(24,48,76,.23);
