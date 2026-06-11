@@ -768,7 +768,7 @@ function addScorePoint(side, info = {}) {
     state.points = { us: 0, them: 0 };
     state.finalGame = false;
     state.serveSide = state.serveSide === "us" ? "them" : "us";
-    if (state.serveSide === "us") state.server = state.server === 1 ? 2 : 1;
+    if (state.serveSide === "us") state.server = 1;
     const need = scoreGamesToWin(state.format);
     if (state.games[gameWon] >= need) {
       state.finished = true;
