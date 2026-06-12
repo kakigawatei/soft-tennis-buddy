@@ -2206,11 +2206,40 @@ function renderMatchChecklist() {
 
 const judgePaper = document.querySelector("#judgePaper");
 
-function judgePointMarks(entries) {
-  return entries.map(entry => {
-    const mark = entry.side === "us" ? "○" : "✕";
-    return entry.reason === "dfault" ? `${mark}<small>F</small>` : mark;
-  }).join(" ");
+function judgeGrid(entries, perspective) {
+  const cols = 16;
+  const cells = [];
+  for (let i = 0; i < cols * 2; i++) {
+    const entry = entries[i];
+    let mark = "";
+    if (entry) mark = entry.side === perspective ? "○" : "✕";
+    cells.push(`<i>${mark}</i>`);
+  }
+  return `<div class="pgrid">${cells.join("")}</div>`;
+}
+
+function judgeFinalGrid(entries, perspective) {
+  // ファイナル行: 2ポイントごとの*印付き（サービス交代の目印）
+  const cols = 16;
+  const cells = [];
+  for (let i = 0; i < cols * 2; i++) {
+    const entry = entries[i];
+    let mark = "";
+    if (entry) mark = entry.side === perspective ? "○" : "✕";
+    const col = i % cols;
+    const star = Math.floor(col / 2) % 2 === (i < cols ? 0 : 1) ? ' class="star"' : "";
+    cells.push(`<i${star}>${mark}</i>`);
+  }
+  return `<div class="pgrid pgrid-final">${cells.join("")}</div>`;
+}
+
+function judgeSR(circle) {
+  return `<span class="sr"><b class="${circle === "S" ? "on" : ""}">S</b><b class="${circle === "R" ? "on" : ""}">R</b></span>`;
+}
+
+function judgeCircled(value, won) {
+  if (value === null) return "";
+  return `<span class="${won ? "circled" : ""}">${value}</span>`;
 }
 
 function renderJudgePaper() {
@@ -2221,98 +2250,116 @@ function renderJudgePaper() {
   const [p1, p2] = state.players;
   const opponent = state.opponent || "";
   const need = scoreGamesToWin(state.format);
-  const today = new Intl.DateTimeFormat("ja-JP", { dateStyle: "long" }).format(new Date());
   const gameEntries = [];
   for (const entry of state.log) {
     if (!gameEntries[entry.g]) gameEntries[entry.g] = [];
     gameEntries[entry.g].push(entry);
   }
-  let runUs = 0;
-  let runThem = 0;
   const rows = [];
-  for (let g = 0; g < state.format; g++) {
-    const entries = gameEntries[g] || [];
+  const gameNums = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+  for (let row = 0; row < 9; row++) {
+    const isFinal = row === 8;
+    // 通常ゲームは①〜⑧、ファイナル（最終ゲーム）はⒻ行へ
+    const g = isFinal ? state.format - 1 : row;
+    const entries = (isFinal || g < state.format - 1) ? (gameEntries[g] || []) : [];
     const usPts = entries.filter(e => e.side === "us").length;
     const themPts = entries.filter(e => e.side === "them").length;
-    const isFinal = g === state.format - 1;
     const target = isFinal ? 7 : 4;
     const decided = entries.length > 0 && Math.max(usPts, themPts) >= target && Math.abs(usPts - themPts) >= 2;
-    let taken = "";
-    if (decided) {
-      if (usPts > themPts) { runUs += 1; taken = "自"; }
-      else { runThem += 1; taken = "相手"; }
+    let srLeft = "";
+    let srRight = "";
+    if (analysis && entries.length) {
+      const serveUs = entries[0].serve === "us";
+      srLeft = serveUs ? "S" : "R";
+      srRight = serveUs ? "R" : "S";
     }
-    let serveLabel = "";
-    if (entries.length && analysis) {
-      const first = entries[0];
-      serveLabel = isFinal ? "交互" : first.serve === "us" ? `自(${first.server ? state.players[first.server - 1] : "—"})` : "相手";
-    }
+    const center = entries.length
+      ? `${judgeCircled(usPts, decided && usPts > themPts)}<em>-${isFinal ? "Ⓕ" : gameNums[row]}-</em>${judgeCircled(themPts, decided && themPts > usPts)}`
+      : `<em>-${isFinal ? "Ⓕ" : gameNums[row]}-</em>`;
+    const gridFn = isFinal ? judgeFinalGrid : judgeGrid;
     rows.push(`
       <tr>
-        <td>${isFinal ? "F" : g + 1}</td>
-        <td>${escapeHtml(serveLabel)}</td>
-        <td class="judge-points">${entries.length ? judgePointMarks(entries) : ""}</td>
-        <td>${entries.length ? `${usPts}−${themPts}` : "−"}</td>
-        <td>${taken}</td>
-        <td>${decided ? `${runUs}−${runThem}` : ""}</td>
+        <td class="srcell">${judgeSR(srLeft)}</td>
+        <td class="ptcell">${gridFn(entries, "us")}</td>
+        <td class="gcell">${center}</td>
+        <td class="ptcell">${gridFn(entries, "them")}</td>
+        <td class="srcell">${judgeSR(srRight)}</td>
       </tr>
     `);
-    if (runUs >= need || runThem >= need) {
-      for (let rest = g + 1; rest < state.format; rest++) {
-        rows.push(`<tr><td>${rest === state.format - 1 ? "F" : rest + 1}</td><td></td><td class="judge-points"></td><td></td><td></td><td></td></tr>`);
-      }
-      break;
-    }
   }
-  let resultLine = "結果: ゲームカウント ＿＿＿ − ＿＿＿　勝者 ＿＿＿＿＿＿＿＿";
-  if (state.finished) {
-    resultLine = `結果: ゲームカウント ${state.games.us} − ${state.games.them}　勝者 ${state.winner === "us" ? `${escapeHtml(p1)}・${escapeHtml(p2)} ペア` : escapeHtml(opponent) || "相手ペア"}`;
-  }
-  let statsBlock = "";
-  if (analysis && state.log.length) {
-    const stats = scoreAnalysisStats(state);
-    statsBlock = `
-      <table class="judge-stats">
-        <thead><tr><th></th><th>得点</th><th>ミス</th><th>1stサーブ</th><th>Wフォルト</th></tr></thead>
-        <tbody>
-          <tr><td>${escapeHtml(p1)}</td><td>${stats.players[0].win}</td><td>${stats.players[0].miss}</td><td>${firstServeText(stats.players[0])}</td><td>${dfRateText(stats.players[0])}</td></tr>
-          <tr><td>${escapeHtml(p2)}</td><td>${stats.players[1].win}</td><td>${stats.players[1].miss}</td><td>${firstServeText(stats.players[1])}</td><td>${dfRateText(stats.players[1])}</td></tr>
-        </tbody>
-      </table>
-      <p class="judge-note">相手のWフォルト: ${stats.dfThem}本 ／ 相手ミスほかでの得点: ${stats.otherWin}本</p>
-    `;
-  }
+  const scoreCenter = state.log.length
+    ? `${judgeCircled(state.games.us, state.finished && state.winner === "us")}<em>−</em>${judgeCircled(state.games.them, state.finished && state.winner === "them")}`
+    : "<em>−</em>";
   judgePaper.innerHTML = `
     <div class="judge-actions">
       <button id="judgePrint" type="button">印刷する</button>
       <button id="judgeClose" type="button">閉じる</button>
     </div>
     <div class="judge-sheet">
-      <h1>ジャッジペーパー</h1>
-      <div class="judge-head">
-        <span>大会名: ＿＿＿＿＿＿＿＿＿＿＿＿＿＿</span>
-        <span>年月日: ${today}</span>
-        <span>コート: ＿＿＿</span>
-        <span>＿＿＿回戦</span>
-      </div>
-      <div class="judge-teams">
-        <span>自チーム: ${escapeHtml(p1)} ・ ${escapeHtml(p2)}</span>
-        <span>相手チーム: ${opponent ? escapeHtml(opponent) : "＿＿＿＿＿＿＿＿＿＿"}</span>
-        <span>${state.format}ゲームマッチ（${need}ゲーム先取）</span>
-      </div>
-      <table class="judge-table">
-        <thead>
-          <tr><th>G</th><th>サーブ</th><th>ポイント経過（○=自 ✕=相手 F=Wフォルト）</th><th>スコア</th><th>取得</th><th>カウント</th></tr>
-        </thead>
-        <tbody>${rows.join("")}</tbody>
+      <h1>ダブルス・シングルス採点票</h1>
+      <table class="jhead">
+        <tr>
+          <td class="w26">種別　　　　　<span class="mw">男<br>女</span></td>
+          <td class="w22">第　　　　コート</td>
+          <td class="w26"><small>正審</small></td>
+          <td class="w26"><small>副審</small></td>
+        </tr>
+        <tr>
+          <td>第　　　　回戦</td>
+          <td><small>開始</small>　　：　　分<br><small>終了</small>　　：　　分</td>
+          <td><small>線審</small></td>
+          <td><small>線審</small></td>
+        </tr>
       </table>
-      <p class="judge-result">${resultLine}</p>
-      ${statsBlock}
-      <div class="judge-officials">
-        <span>主審: ＿＿＿＿＿＿＿＿</span>
-        <span>副審: ＿＿＿＿＿＿＿＿</span>
-        <span>記録: ＿＿＿＿＿＿＿＿</span>
-      </div>
+      <table class="jteams">
+        <tr>
+          <td class="no"><small>No</small></td>
+          <td class="aff"><small>所属</small></td>
+          <td class="mid" rowspan="3"><small>（スコア）</small><div class="jscore">${scoreCenter}</div></td>
+          <td class="no"><small>No</small></td>
+          <td class="aff"><small>所属</small>　${opponent ? escapeHtml(opponent) : ""}</td>
+        </tr>
+        <tr>
+          <td class="plab"><small>プレーヤー</small></td>
+          <td class="pname"><small>A</small>　${escapeHtml(p1)}</td>
+          <td class="plab"><small>プレーヤー</small></td>
+          <td class="pname"><small>A</small></td>
+        </tr>
+        <tr>
+          <td class="plab"><small>サイド</small></td>
+          <td class="pname"><small>B</small>　${escapeHtml(p2)}</td>
+          <td class="plab"><small>サイド</small></td>
+          <td class="pname"><small>B</small></td>
+        </tr>
+      </table>
+      <table class="jgames">${rows.join("")}</table>
+      <table class="jfoot">
+        <tr>
+          <td class="warn"><small>(警告)</small>　Y　　Y　　R</td>
+          <td class="time" rowspan="2"><small>タイム</small><br>A　5　・　5<br>B　5　・　5</td>
+          <td class="time" rowspan="2"><small>タイム</small><br>A　5　・　5<br>B　5　・　5</td>
+          <td class="warn"><small>(警告)</small>　Y　　Y　　R</td>
+        </tr>
+        <tr>
+          <td class="warn"><small>該当事項</small></td>
+          <td class="warn"><small>該当事項</small></td>
+        </tr>
+      </table>
+      <table class="jsign">
+        <tr>
+          <td><small>勝者サイン</small></td>
+          <td class="fill"></td>
+          <td><small>勝者No.</small></td>
+          <td class="fill"></td>
+          <td><small>進行</small></td>
+          <td class="fill"></td>
+          <td><small>点検</small></td>
+          <td class="fill"></td>
+          <td><small>記録</small></td>
+          <td class="fill"></td>
+        </tr>
+      </table>
+      <p class="jfooter">公益財団法人　日本ソフトテニス連盟　採点票様式に準拠</p>
     </div>
   `;
   judgePaper.querySelector("#judgePrint").addEventListener("click", () => window.print());

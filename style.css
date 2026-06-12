@@ -1932,9 +1932,9 @@ input:focus, select:focus, textarea:focus {
   position: fixed;
   inset: 0;
   z-index: 60;
-  overflow-y: auto;
+  overflow: auto;
   padding: 14px;
-  background: #f3f5f4;
+  background: #eef2f5;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1945,7 +1945,7 @@ input:focus, select:focus, textarea:focus {
 .judge-actions {
   display: flex;
   gap: 8px;
-  max-width: 640px;
+  max-width: 720px;
   margin: 0 auto 10px;
 }
 
@@ -1964,78 +1964,130 @@ input:focus, select:focus, textarea:focus {
 }
 
 .judge-sheet {
-  max-width: 640px;
+  --jblue: #2c66ad;
+  width: 720px;
   margin: 0 auto;
-  padding: 18px 16px;
-  border: 1px solid #222;
-  border-radius: 4px;
+  padding: 16px 14px;
   background: #fff;
-  color: #111;
-  font-size: 12px;
-  line-height: 1.6;
+  color: var(--jblue);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .judge-sheet h1 {
-  margin: 0 0 10px;
-  font-size: 17px;
-  text-align: center;
-  letter-spacing: .3em;
-}
-
-.judge-head,
-.judge-teams {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
   margin: 0 0 8px;
+  color: var(--jblue);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: .2em;
 }
 
-.judge-table,
-.judge-stats {
+.judge-sheet table {
   width: 100%;
-  margin: 8px 0;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.judge-table th,
-.judge-table td,
-.judge-stats th,
-.judge-stats td {
-  padding: 5px 6px;
-  border: 1px solid #333;
-  font-size: 11px;
+.judge-sheet td {
+  border: 1.5px solid var(--jblue);
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.judge-sheet small {
+  font-size: 9px;
+}
+
+.judge-sheet em {
+  font-style: normal;
+  letter-spacing: .05em;
+}
+
+.jhead td.w26 { width: 26%; }
+.jhead td.w22 { width: 22%; }
+.jhead .mw { float: right; font-size: 9px; line-height: 1.3; }
+.jhead tr td { height: 30px; }
+
+.jteams { margin-top: -1.5px; }
+.jteams .no { width: 9%; }
+.jteams .aff { width: 24%; }
+.jteams .mid { width: 14%; text-align: center; }
+.jteams .plab { width: 9%; font-size: 8px; }
+.jteams .pname { height: 26px; font-size: 12px; }
+.jscore { margin-top: 14px; font-size: 16px; font-weight: 800; }
+.jscore em { margin: 0 6px; }
+
+.jgames { margin-top: -1.5px; }
+.jgames .srcell { width: 5%; padding: 3px 2px; text-align: center; }
+.jgames .ptcell { width: 33.5%; padding: 2px; }
+.jgames .gcell { width: 14%; padding: 6px 2px; text-align: center; font-size: 12px; }
+.jgames .gcell em { margin: 0 4px; }
+
+.sr { display: inline-flex; flex-direction: column; gap: 6px; }
+.sr b {
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+.sr b.on {
+  border: 1.5px solid var(--jblue);
+  border-radius: 50%;
+}
+
+.circled {
+  display: inline-block;
+  min-width: 17px;
+  height: 17px;
+  line-height: 15px;
+  border: 1.5px solid var(--jblue);
+  border-radius: 50%;
   text-align: center;
 }
 
-.judge-table .judge-points {
-  min-width: 150px;
-  text-align: left;
-  letter-spacing: .12em;
-  line-height: 1.8;
+.pgrid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
 }
 
-.judge-points small {
-  font-size: 8px;
-  vertical-align: super;
+.pgrid i {
+  position: relative;
+  height: 17px;
+  border: .5px solid rgba(44,102,173,.55);
+  font-style: normal;
+  font-size: 10px;
+  line-height: 17px;
+  text-align: center;
 }
 
-.judge-result {
-  margin: 10px 0;
-  font-weight: bold;
+.pgrid-final i.star::after {
+  content: "＊";
+  position: absolute;
+  top: -1px;
+  right: 0;
+  font-size: 6px;
+  opacity: .8;
 }
 
-.judge-note {
-  margin: 4px 0 10px;
-  font-size: 10.5px;
-}
+.jfoot { margin-top: -1.5px; }
+.jfoot .warn { width: 26%; height: 22px; }
+.jfoot .time { width: 24%; text-align: center; }
 
-.judge-officials {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px dashed #777;
+.jsign { margin-top: -1.5px; }
+.jsign td { height: 26px; }
+.jsign td:nth-child(odd) { width: 9%; font-size: 9px; }
+.jsign .fill { width: 11%; }
+
+.jfooter {
+  margin: 8px 0 0;
+  color: var(--jblue);
+  font-size: 10px;
+  text-align: center;
+  letter-spacing: .15em;
 }
 
 @media print {
@@ -2055,8 +2107,7 @@ input:focus, select:focus, textarea:focus {
   }
 
   .judge-sheet {
-    max-width: none;
-    border: none;
+    width: 100%;
     padding: 0;
   }
 }
