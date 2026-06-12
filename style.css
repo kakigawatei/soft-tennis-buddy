@@ -1927,3 +1927,136 @@ input:focus, select:focus, textarea:focus {
     font-size: 12px;
   }
 }
+
+.judge-paper {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  padding: 14px;
+  background: #f3f5f4;
+  -webkit-overflow-scrolling: touch;
+}
+
+.judge-paper.hidden {
+  display: none;
+}
+
+.judge-actions {
+  display: flex;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto 10px;
+}
+
+.judge-actions button {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #49aee8);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.judge-actions #judgeClose {
+  background: linear-gradient(135deg, #8fa6b8, #6c8aa3);
+}
+
+.judge-sheet {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 16px;
+  border: 1px solid #222;
+  border-radius: 4px;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.judge-sheet h1 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  text-align: center;
+  letter-spacing: .3em;
+}
+
+.judge-head,
+.judge-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+}
+
+.judge-table,
+.judge-stats {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+}
+
+.judge-table th,
+.judge-table td,
+.judge-stats th,
+.judge-stats td {
+  padding: 5px 6px;
+  border: 1px solid #333;
+  font-size: 11px;
+  text-align: center;
+}
+
+.judge-table .judge-points {
+  min-width: 150px;
+  text-align: left;
+  letter-spacing: .12em;
+  line-height: 1.8;
+}
+
+.judge-points small {
+  font-size: 8px;
+  vertical-align: super;
+}
+
+.judge-result {
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+.judge-note {
+  margin: 4px 0 10px;
+  font-size: 10.5px;
+}
+
+.judge-officials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #777;
+}
+
+@media print {
+  body.judge-open .app {
+    display: none !important;
+  }
+
+  body.judge-open .judge-paper {
+    position: static;
+    padding: 0;
+    background: #fff;
+    overflow: visible;
+  }
+
+  .judge-actions {
+    display: none !important;
+  }
+
+  .judge-sheet {
+    max-width: none;
+    border: none;
+    padding: 0;
+  }
+}

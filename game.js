@@ -2204,6 +2204,132 @@ function renderMatchChecklist() {
   });
 }
 
+const judgePaper = document.querySelector("#judgePaper");
+
+function judgePointMarks(entries) {
+  return entries.map(entry => {
+    const mark = entry.side === "us" ? "○" : "✕";
+    return entry.reason === "dfault" ? `${mark}<small>F</small>` : mark;
+  }).join(" ");
+}
+
+function renderJudgePaper() {
+  ensureScore();
+  ensurePreferences();
+  const state = store.score;
+  const analysis = store.preferences.scoreMode === "analysis";
+  const [p1, p2] = state.players;
+  const opponent = state.opponent || "";
+  const need = scoreGamesToWin(state.format);
+  const today = new Intl.DateTimeFormat("ja-JP", { dateStyle: "long" }).format(new Date());
+  const gameEntries = [];
+  for (const entry of state.log) {
+    if (!gameEntries[entry.g]) gameEntries[entry.g] = [];
+    gameEntries[entry.g].push(entry);
+  }
+  let runUs = 0;
+  let runThem = 0;
+  const rows = [];
+  for (let g = 0; g < state.format; g++) {
+    const entries = gameEntries[g] || [];
+    const usPts = entries.filter(e => e.side === "us").length;
+    const themPts = entries.filter(e => e.side === "them").length;
+    const isFinal = g === state.format - 1;
+    const target = isFinal ? 7 : 4;
+    const decided = entries.length > 0 && Math.max(usPts, themPts) >= target && Math.abs(usPts - themPts) >= 2;
+    let taken = "";
+    if (decided) {
+      if (usPts > themPts) { runUs += 1; taken = "自"; }
+      else { runThem += 1; taken = "相手"; }
+    }
+    let serveLabel = "";
+    if (entries.length && analysis) {
+      const first = entries[0];
+      serveLabel = isFinal ? "交互" : first.serve === "us" ? `自(${first.server ? state.players[first.server - 1] : "—"})` : "相手";
+    }
+    rows.push(`
+      <tr>
+        <td>${isFinal ? "F" : g + 1}</td>
+        <td>${escapeHtml(serveLabel)}</td>
+        <td class="judge-points">${entries.length ? judgePointMarks(entries) : ""}</td>
+        <td>${entries.length ? `${usPts}−${themPts}` : "−"}</td>
+        <td>${taken}</td>
+        <td>${decided ? `${runUs}−${runThem}` : ""}</td>
+      </tr>
+    `);
+    if (runUs >= need || runThem >= need) {
+      for (let rest = g + 1; rest < state.format; rest++) {
+        rows.push(`<tr><td>${rest === state.format - 1 ? "F" : rest + 1}</td><td></td><td class="judge-points"></td><td></td><td></td><td></td></tr>`);
+      }
+      break;
+    }
+  }
+  let resultLine = "結果: ゲームカウント ＿＿＿ − ＿＿＿　勝者 ＿＿＿＿＿＿＿＿";
+  if (state.finished) {
+    resultLine = `結果: ゲームカウント ${state.games.us} − ${state.games.them}　勝者 ${state.winner === "us" ? `${escapeHtml(p1)}・${escapeHtml(p2)} ペア` : escapeHtml(opponent) || "相手ペア"}`;
+  }
+  let statsBlock = "";
+  if (analysis && state.log.length) {
+    const stats = scoreAnalysisStats(state);
+    statsBlock = `
+      <table class="judge-stats">
+        <thead><tr><th></th><th>得点</th><th>ミス</th><th>1stサーブ</th><th>Wフォルト</th></tr></thead>
+        <tbody>
+          <tr><td>${escapeHtml(p1)}</td><td>${stats.players[0].win}</td><td>${stats.players[0].miss}</td><td>${firstServeText(stats.players[0])}</td><td>${dfRateText(stats.players[0])}</td></tr>
+          <tr><td>${escapeHtml(p2)}</td><td>${stats.players[1].win}</td><td>${stats.players[1].miss}</td><td>${firstServeText(stats.players[1])}</td><td>${dfRateText(stats.players[1])}</td></tr>
+        </tbody>
+      </table>
+      <p class="judge-note">相手のWフォルト: ${stats.dfThem}本 ／ 相手ミスほかでの得点: ${stats.otherWin}本</p>
+    `;
+  }
+  judgePaper.innerHTML = `
+    <div class="judge-actions">
+      <button id="judgePrint" type="button">印刷する</button>
+      <button id="judgeClose" type="button">閉じる</button>
+    </div>
+    <div class="judge-sheet">
+      <h1>ジャッジペーパー</h1>
+      <div class="judge-head">
+        <span>大会名: ＿＿＿＿＿＿＿＿＿＿＿＿＿＿</span>
+        <span>年月日: ${today}</span>
+        <span>コート: ＿＿＿</span>
+        <span>＿＿＿回戦</span>
+      </div>
+      <div class="judge-teams">
+        <span>自チーム: ${escapeHtml(p1)} ・ ${escapeHtml(p2)}</span>
+        <span>相手チーム: ${opponent ? escapeHtml(opponent) : "＿＿＿＿＿＿＿＿＿＿"}</span>
+        <span>${state.format}ゲームマッチ（${need}ゲーム先取）</span>
+      </div>
+      <table class="judge-table">
+        <thead>
+          <tr><th>G</th><th>サーブ</th><th>ポイント経過（○=自 ✕=相手 F=Wフォルト）</th><th>スコア</th><th>取得</th><th>カウント</th></tr>
+        </thead>
+        <tbody>${rows.join("")}</tbody>
+      </table>
+      <p class="judge-result">${resultLine}</p>
+      ${statsBlock}
+      <div class="judge-officials">
+        <span>主審: ＿＿＿＿＿＿＿＿</span>
+        <span>副審: ＿＿＿＿＿＿＿＿</span>
+        <span>記録: ＿＿＿＿＿＿＿＿</span>
+      </div>
+    </div>
+  `;
+  judgePaper.querySelector("#judgePrint").addEventListener("click", () => window.print());
+  judgePaper.querySelector("#judgeClose").addEventListener("click", closeJudgePaper);
+}
+
+function openJudgePaper() {
+  renderJudgePaper();
+  judgePaper.classList.remove("hidden");
+  document.body.classList.add("judge-open");
+}
+
+function closeJudgePaper() {
+  judgePaper.classList.add("hidden");
+  document.body.classList.remove("judge-open");
+}
+
 function renderScoreFlow(state) {
   if (!state.log.length) return '<p class="score-flow-empty">ポイントを記録すると、試合の流れがここに並ぶよ。</p>';
   const recent = state.log.slice(-30);
@@ -2245,6 +2371,7 @@ function renderScoreBoard() {
     <div class="score-tools">
       <button id="scoreUndo" type="button">1本戻す</button>
       <button id="scoreReset" type="button">リセット</button>
+      <button id="judgePaperBtn" type="button">ジャッジペーパー</button>
       ${state.finished && !state.saved ? '<button id="scoreToResult" class="score-save" type="button">結果メモに残す</button>' : ""}
     </div>
   `;
@@ -2379,6 +2506,7 @@ function renderScoreBoard() {
     petSay("スコアをリセットしたよ。次の試合もがんばろう。", "calm");
   });
   scoreBoard.querySelector("#scoreToResult")?.addEventListener("click", saveScoreToResults);
+  scoreBoard.querySelector("#judgePaperBtn")?.addEventListener("click", openJudgePaper);
 }
 
 const resultFocuses = {
