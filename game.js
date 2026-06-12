@@ -3115,3 +3115,29 @@ setExpression("calm");
 updateSpriteStatus();
 if (store.spriteData) loadSprite(store.spriteData, null, false);
 requestAnimationFrame(drawPet);
+
+// ホーム画面に追加（PWA）
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+
+let installPromptEvent = null;
+const installButton = document.querySelector("#installApp");
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault();
+  installPromptEvent = event;
+  installButton?.classList.remove("hidden");
+});
+installButton?.addEventListener("click", async () => {
+  if (!installPromptEvent) return;
+  installPromptEvent.prompt();
+  const choice = await installPromptEvent.userChoice;
+  installPromptEvent = null;
+  installButton.classList.add("hidden");
+  if (choice.outcome === "accepted") {
+    petSay("ホーム画面に追加できたよ。これからはアイコンから1タップだね！", "heart");
+  }
+});
+window.addEventListener("appinstalled", () => {
+  installButton?.classList.add("hidden");
+});

@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#79d7df" />
     <title>ナンシキ村</title>
-    <link rel="stylesheet" href="./style.css?v=20260611-match-detail" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="./assets/icon-192.png" />
+    <link rel="apple-touch-icon" href="./assets/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="ナンシキ村" />
+    <link rel="stylesheet" href="./style.css?v=20260612-pwa" />
   </head>
   <body>
     <main class="app">
@@ -254,11 +260,20 @@
                 <input id="playerGoal" maxlength="28" placeholder="例: 県大会で1勝する" autocomplete="off" />
               </label>
             </div>
+            <div class="settings-group">
+              <h3>ホーム画面に追加</h3>
+              <button id="installApp" class="install-button hidden" type="button">ホーム画面に追加する</button>
+              <p class="settings-note">
+                iPhone: Safariの共有ボタン（□に↑）→「ホーム画面に追加」<br />
+                Android: ブラウザのメニュー（︙）→「アプリをインストール」<br />
+                追加すると、アプリのようにアイコンから1タップで起動できます。
+              </p>
+            </div>
             <p class="settings-note">キャラクター画像は、登録済みのナンシキ村スプライトを使って表示します。ここで選んだ方針は相談と練習メニューに反映されます。</p>
           </section>
         </div>
       </section>
     </main>
-    <script src="./game.js?v=20260611-match-detail"></script>
+    <script src="./game.js?v=20260612-pwa"></script>
   </body>
 </html>

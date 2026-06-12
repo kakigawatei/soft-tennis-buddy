@@ -1280,6 +1280,22 @@ input:focus, select:focus, textarea:focus {
   line-height: 1.6;
 }
 
+.install-button {
+  min-height: 42px;
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #49aee8);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 4px 0 rgba(20,128,150,.18);
+}
+
+.install-button.hidden {
+  display: none;
+}
+
 .rally-button {
   position: absolute;
   z-index: 2;
