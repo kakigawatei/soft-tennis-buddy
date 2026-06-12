@@ -2366,11 +2366,20 @@ function renderJudgePaper() {
   judgePaper.querySelector("#judgeClose").addEventListener("click", closeJudgePaper);
 }
 
+function fitJudgeSheet() {
+  if (!judgePaper || judgePaper.classList.contains("hidden")) return;
+  const available = Math.max(280, judgePaper.clientWidth - 28);
+  judgePaper.style.setProperty("--jscale", Math.min(1, available / 720));
+}
+
 function openJudgePaper() {
   renderJudgePaper();
   judgePaper.classList.remove("hidden");
   document.body.classList.add("judge-open");
+  fitJudgeSheet();
 }
+
+window.addEventListener("resize", fitJudgeSheet);
 
 function closeJudgePaper() {
   judgePaper.classList.add("hidden");

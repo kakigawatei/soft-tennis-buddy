@@ -2090,7 +2090,24 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: .15em;
 }
 
+@media screen {
+  .judge-sheet {
+    zoom: var(--jscale, 1);
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
 @media print {
+  html,
+  body,
+  body.judge-open {
+    background: #fff !important;
+  }
+
   body.judge-open .app {
     display: none !important;
   }
@@ -2107,6 +2124,7 @@ input:focus, select:focus, textarea:focus {
   }
 
   .judge-sheet {
+    zoom: 1 !important;
     width: 100%;
     padding: 0;
   }
