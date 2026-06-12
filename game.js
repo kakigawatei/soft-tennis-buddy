@@ -758,6 +758,7 @@ function addScorePoint(side, info = {}) {
     side,
     player: info.player || null,
     reason: info.reason || "point",
+    opp: info.opp || null,
     serve: state.serveSide,
     server: ourServe ? state.server : null,
     firstIn: ourServe ? state.faultCount === 0 && info.reason !== "dfault" : null
@@ -891,6 +892,10 @@ function scoreAnalysisStats(state) {
       { win: 0, miss: 0, servePts: 0, firstIn: 0, df: 0 },
       { win: 0, miss: 0, servePts: 0, firstIn: 0, df: 0 }
     ],
+    opponents: [
+      { win: 0, miss: 0 },
+      { win: 0, miss: 0 }
+    ],
     dfUs: 0,
     dfThem: 0,
     otherWin: 0,
@@ -908,9 +913,12 @@ function scoreAnalysisStats(state) {
       else stats.dfUs += 1;
     } else if (entry.side === "us") {
       if (entry.player) stats.players[entry.player - 1].win += 1;
+      else if (entry.opp) stats.opponents[entry.opp - 1].miss += 1;
       else stats.otherWin += 1;
     } else if (entry.player) {
       stats.players[entry.player - 1].miss += 1;
+    } else if (entry.opp) {
+      stats.opponents[entry.opp - 1].win += 1;
     } else {
       stats.otherLose += 1;
     }
@@ -2026,21 +2034,30 @@ function renderMatchDetail(item) {
   }
   const stats = scoreAnalysisStats({ log: match.log });
   const [p1, p2] = match.players || ["選手1", "選手2"];
-  const barMax = Math.max(1, stats.players[0].win, stats.players[1].win, stats.players[0].miss, stats.players[1].miss, stats.otherWin, stats.otherLose);
+  const oppA = match.opponents?.[0] || "相手A";
+  const oppB = match.opponents?.[1] || "相手B";
+  const barMax = Math.max(1,
+    stats.players[0].win, stats.players[1].win, stats.players[0].miss, stats.players[1].miss,
+    stats.opponents[0].win, stats.opponents[1].win, stats.opponents[0].miss, stats.opponents[1].miss,
+    stats.otherWin, stats.otherLose);
   return `
     <div class="match-detail">
       <small>得点差の推移（縦線=ゲームの区切り）</small>
       ${matchProgressionSvg(match)}
       <small>ポイントの流れ</small>
       ${renderScoreFlow({ log: match.log })}
-      <small>得点</small>
-      ${statBarRow(p1, stats.players[0].win, barMax, "bar-win")}
-      ${statBarRow(p2, stats.players[1].win, barMax, "bar-win")}
-      ${statBarRow("相手ミス他", stats.otherWin, barMax, "bar-win")}
-      <small>失点</small>
-      ${statBarRow(`${p1}ミス`, stats.players[0].miss, barMax, "bar-miss")}
-      ${statBarRow(`${p2}ミス`, stats.players[1].miss, barMax, "bar-miss")}
-      ${statBarRow("相手に決められた", stats.otherLose, barMax, "bar-miss")}
+      <small>得点の内訳</small>
+      ${statBarRow(`${p1}が決めた`, stats.players[0].win, barMax, "bar-win")}
+      ${statBarRow(`${p2}が決めた`, stats.players[1].win, barMax, "bar-win")}
+      ${statBarRow(`${oppA}のミス`, stats.opponents[0].miss, barMax, "bar-win")}
+      ${statBarRow(`${oppB}のミス`, stats.opponents[1].miss, barMax, "bar-win")}
+      ${stats.otherWin ? statBarRow("その他", stats.otherWin, barMax, "bar-win") : ""}
+      <small>失点の内訳</small>
+      ${statBarRow(`${p1}のミス`, stats.players[0].miss, barMax, "bar-miss")}
+      ${statBarRow(`${p2}のミス`, stats.players[1].miss, barMax, "bar-miss")}
+      ${statBarRow(`${oppA}が決めた`, stats.opponents[0].win, barMax, "bar-miss")}
+      ${statBarRow(`${oppB}が決めた`, stats.opponents[1].win, barMax, "bar-miss")}
+      ${stats.otherLose ? statBarRow("その他", stats.otherLose, barMax, "bar-miss") : ""}
       <div class="detail-rates">
         <span>1stサーブ: ${escapeHtml(p1)} ${firstServeText(stats.players[0])} / ${escapeHtml(p2)} ${firstServeText(stats.players[1])}</span>
         <span>Wフォルト率: ${escapeHtml(p1)} ${dfRateText(stats.players[0])} / ${escapeHtml(p2)} ${dfRateText(stats.players[1])}</span>
@@ -2396,7 +2413,7 @@ function renderScoreFlow(state) {
   const dots = recent.map(entry => {
     const divider = entry.g !== lastGame ? '<i class="flow-game"></i>' : "";
     lastGame = entry.g;
-    const label = entry.reason === "dfault" ? "F" : entry.player ? String(entry.player) : "・";
+    const label = entry.reason === "dfault" ? "F" : entry.player ? String(entry.player) : entry.opp ? (entry.opp === 1 ? "A" : "B") : "・";
     return `${divider}<span class="flow-dot ${entry.side === "us" ? "us" : "them"}" title="${entry.side === "us" ? "得点" : "失点"}">${label}</span>`;
   }).join("");
   return `<div class="score-flow" aria-label="ポイントの流れ">${dots}</div>`;
@@ -2411,6 +2428,8 @@ function renderScoreBoard() {
   const need = scoreGamesToWin(state.format);
   const opponent = scoreOpponentLabel(state);
   const [p1, p2] = state.players;
+  const oppA = state.opponents[0] || "相手A";
+  const oppB = state.opponents[1] || "相手B";
   const disabled = state.finished ? "disabled" : "";
   const statusLine = state.finished
     ? state.winner === "us" ? "マッチ勝利！おつかれさま！" : "マッチ終了。よく戦ったよ。"
@@ -2482,8 +2501,10 @@ function renderScoreBoard() {
           <button class="ana-win" id="scoreP2Win" type="button" ${disabled}>${escapeHtml(p2)}<b>が決めた +1</b></button>
           <button class="ana-miss" id="scoreP1Miss" type="button" ${disabled}>${escapeHtml(p1)}<b>のミス −1</b></button>
           <button class="ana-miss" id="scoreP2Miss" type="button" ${disabled}>${escapeHtml(p2)}<b>のミス −1</b></button>
-          <button class="ana-other-win" id="scoreUsOther" type="button" ${disabled}>相手ミスで<b>得点 +1</b></button>
-          <button class="ana-other-miss" id="scoreThemOther" type="button" ${disabled}>相手に<b>決められた −1</b></button>
+          <button class="ana-other-win" id="scoreOppAMiss" type="button" ${disabled}>${escapeHtml(oppA)}<b>のミスで得点 +1</b></button>
+          <button class="ana-other-win" id="scoreOppBMiss" type="button" ${disabled}>${escapeHtml(oppB)}<b>のミスで得点 +1</b></button>
+          <button class="ana-other-miss" id="scoreOppAWin" type="button" ${disabled}>${escapeHtml(oppA)}<b>が決めた −1</b></button>
+          <button class="ana-other-miss" id="scoreOppBWin" type="button" ${disabled}>${escapeHtml(oppB)}<b>が決めた −1</b></button>
         </div>
         <button id="scoreFault" class="fault-button ${state.faultCount === 1 ? "warn" : ""}" type="button" ${disabled}>
           ${state.faultCount === 1 ? "フォルト 1本目 — もう1回でWフォルト" : "フォルト"}
@@ -2492,6 +2513,8 @@ function renderScoreBoard() {
         <div class="score-stats">
           <span>${escapeHtml(p1)}: 得点${stats.players[0].win} / ミス${stats.players[0].miss}</span>
           <span>${escapeHtml(p2)}: 得点${stats.players[1].win} / ミス${stats.players[1].miss}</span>
+          <span>${escapeHtml(oppA)}: 得点${stats.opponents[0].win} / ミス${stats.opponents[0].miss}</span>
+          <span>${escapeHtml(oppB)}: 得点${stats.opponents[1].win} / ミス${stats.opponents[1].miss}</span>
           <span>1stサーブ: ${escapeHtml(p1)} ${firstServeText(stats.players[0])} / ${escapeHtml(p2)} ${firstServeText(stats.players[1])}</span>
           <span>Wフォルト率: ${escapeHtml(p1)} ${dfRateText(stats.players[0])} / ${escapeHtml(p2)} ${dfRateText(stats.players[1])}（相手${stats.dfThem}本）</span>
         </div>
@@ -2568,8 +2591,10 @@ function renderScoreBoard() {
   scoreBoard.querySelector("#scoreP2Win")?.addEventListener("click", () => addScorePoint("us", { player: 2 }));
   scoreBoard.querySelector("#scoreP1Miss")?.addEventListener("click", () => addScorePoint("them", { player: 1, reason: "miss" }));
   scoreBoard.querySelector("#scoreP2Miss")?.addEventListener("click", () => addScorePoint("them", { player: 2, reason: "miss" }));
-  scoreBoard.querySelector("#scoreUsOther")?.addEventListener("click", () => addScorePoint("us"));
-  scoreBoard.querySelector("#scoreThemOther")?.addEventListener("click", () => addScorePoint("them"));
+  scoreBoard.querySelector("#scoreOppAMiss")?.addEventListener("click", () => addScorePoint("us", { opp: 1, reason: "oppmiss" }));
+  scoreBoard.querySelector("#scoreOppBMiss")?.addEventListener("click", () => addScorePoint("us", { opp: 2, reason: "oppmiss" }));
+  scoreBoard.querySelector("#scoreOppAWin")?.addEventListener("click", () => addScorePoint("them", { opp: 1 }));
+  scoreBoard.querySelector("#scoreOppBWin")?.addEventListener("click", () => addScorePoint("them", { opp: 2 }));
   scoreBoard.querySelector("#scoreFault")?.addEventListener("click", registerScoreFault);
   scoreBoard.querySelector("#scorePlayer1")?.addEventListener("change", event => {
     state.players[0] = event.target.value.trim() || "選手1";
