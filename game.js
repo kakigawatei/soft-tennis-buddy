@@ -664,7 +664,7 @@ function ensureMatchPrep() {
 
 const scoreCallNames = ["ゼロ", "ワン", "ツー", "スリー", "フォー", "ファイブ", "シックス"];
 
-function newScoreState(format = 7, opponent = "", players = null) {
+function newScoreState(format = 7, opponent = "", players = null, opponents = null) {
   return {
     format,
     opponent,
@@ -679,6 +679,7 @@ function newScoreState(format = 7, opponent = "", players = null) {
     server: 1,
     faultCount: 0,
     players: players || ["選手1", "選手2"],
+    opponents: opponents || ["", ""],
     log: []
   };
 }
@@ -693,6 +694,7 @@ function ensureScore() {
   if (state.server !== 1 && state.server !== 2) state.server = 1;
   if (typeof state.faultCount !== "number") state.faultCount = 0;
   if (!Array.isArray(state.players) || state.players.length !== 2) state.players = ["選手1", "選手2"];
+  if (!Array.isArray(state.opponents) || state.opponents.length !== 2) state.opponents = ["", ""];
   if (!Array.isArray(state.log)) state.log = [];
 }
 
@@ -878,7 +880,7 @@ function undoScorePoint() {
 
 function resetScore(format) {
   ensureScore();
-  store.score = newScoreState(format ?? store.score.format, store.score.opponent, store.score.players);
+  store.score = newScoreState(format ?? store.score.format, store.score.opponent, store.score.players, store.score.opponents);
   saveStore();
   renderScoreBoard();
 }
@@ -962,6 +964,7 @@ function saveScoreToResults() {
       won,
       games: { ...state.games },
       players: [...state.players],
+      opponents: [...state.opponents],
       log: state.log.slice(-200)
     }
   });
@@ -2323,13 +2326,13 @@ function renderJudgePaper() {
           <td class="plab"><small>プレーヤー</small></td>
           <td class="pname"><small>A</small>　${escapeHtml(p1)}</td>
           <td class="plab"><small>プレーヤー</small></td>
-          <td class="pname"><small>A</small></td>
+          <td class="pname"><small>A</small>　${escapeHtml(state.opponents[0] || "")}</td>
         </tr>
         <tr>
           <td class="plab"><small>サイド</small></td>
           <td class="pname"><small>B</small>　${escapeHtml(p2)}</td>
           <td class="plab"><small>サイド</small></td>
-          <td class="pname"><small>B</small></td>
+          <td class="pname"><small>B</small>　${escapeHtml(state.opponents[1] || "")}</td>
         </tr>
       </table>
       <table class="jgames">${rows.join("")}</table>
@@ -2447,8 +2450,14 @@ function renderScoreBoard() {
               ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
             </select>
           </label>
-          <label><span>相手の名前</span>
-            <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+          <label><span>相手チーム名</span>
+            <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+          </label>
+          <label><span>相手選手A</span>
+            <input id="scoreOpponent1" maxlength="8" placeholder="例: 瀬戸" value="${escapeHtml(state.opponents[0] || "")}" autocomplete="off" />
+          </label>
+          <label><span>相手選手B</span>
+            <input id="scoreOpponent2" maxlength="8" placeholder="例: 西村" value="${escapeHtml(state.opponents[1] || "")}" autocomplete="off" />
           </label>
         </div>
       </article>
@@ -2500,8 +2509,14 @@ function renderScoreBoard() {
               ${[5, 7, 9].map(format => `<option value="${format}" ${state.format === format ? "selected" : ""}>${format}ゲーム</option>`).join("")}
             </select>
           </label>
-          <label><span>相手の名前</span>
-            <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中ペア" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+          <label><span>相手チーム名</span>
+            <input id="scoreOpponent" maxlength="12" placeholder="例: ○○中" value="${escapeHtml(state.opponent || "")}" autocomplete="off" />
+          </label>
+          <label><span>相手選手A</span>
+            <input id="scoreOpponent1" maxlength="8" placeholder="例: 瀬戸" value="${escapeHtml(state.opponents[0] || "")}" autocomplete="off" />
+          </label>
+          <label><span>相手選手B</span>
+            <input id="scoreOpponent2" maxlength="8" placeholder="例: 西村" value="${escapeHtml(state.opponents[1] || "")}" autocomplete="off" />
           </label>
         </div>
       </article>
@@ -2514,6 +2529,16 @@ function renderScoreBoard() {
   });
   scoreBoard.querySelector("#scoreOpponent")?.addEventListener("change", event => {
     state.opponent = event.target.value.trim();
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#scoreOpponent1")?.addEventListener("change", event => {
+    state.opponents[0] = event.target.value.trim();
+    saveStore();
+    renderScoreBoard();
+  });
+  scoreBoard.querySelector("#scoreOpponent2")?.addEventListener("change", event => {
+    state.opponents[1] = event.target.value.trim();
     saveStore();
     renderScoreBoard();
   });
