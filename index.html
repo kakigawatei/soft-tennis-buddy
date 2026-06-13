@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="集まれナンシキ村" />
-    <link rel="stylesheet" href="./style.css?v=20260612-opp-stats" />
+    <link rel="stylesheet" href="./style.css?v=20260612-backup" />
   </head>
   <body>
     <main class="app">
@@ -269,12 +269,25 @@
                 追加すると、アプリのようにアイコンから1タップで起動できます。
               </p>
             </div>
+            <div class="settings-group">
+              <h3>記録のバックアップ</h3>
+              <p id="backupCount" class="settings-note"></p>
+              <div class="backup-actions">
+                <button id="exportData" type="button">記録を書き出す</button>
+                <button id="importData" type="button">記録を読み込む</button>
+              </div>
+              <input id="importFile" type="file" accept="application/json,.json" hidden />
+              <p class="settings-note">
+                記録はこの端末の中だけに保存されています。「書き出す」でファイル（.json）として保存しておくと、機種変更や別端末への移し替え、データ消失への備えになります。iPhoneは「ファイル」アプリやiCloud Driveに保存できます。<br />
+                別端末で「読み込む」と、そのファイルの記録を取り込めます（試合・練習の記録は重複を除いて合算されます）。
+              </p>
+            </div>
             <p class="settings-note">キャラクター画像は、登録済みのナンシキ村スプライトを使って表示します。ここで選んだ方針は相談と練習メニューに反映されます。</p>
           </section>
         </div>
       </section>
     </main>
     <div id="judgePaper" class="judge-paper hidden" role="dialog" aria-modal="true" aria-label="ジャッジペーパー"></div>
-    <script src="./game.js?v=20260612-opp-stats"></script>
+    <script src="./game.js?v=20260612-backup"></script>
   </body>
 </html>

@@ -1296,6 +1296,29 @@ input:focus, select:focus, textarea:focus {
   display: none;
 }
 
+.backup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.backup-actions button {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #49aee8);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 4px 0 rgba(20,128,150,.18);
+}
+
+.backup-actions #importData {
+  background: linear-gradient(135deg, #6fc7b2, #9ad6a8);
+  box-shadow: 0 4px 0 rgba(54,122,104,.18);
+}
+
 .rally-button {
   position: absolute;
   z-index: 2;

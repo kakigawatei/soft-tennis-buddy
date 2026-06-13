@@ -1108,7 +1108,7 @@ function saveStore() {
     localStorage.removeItem("buddy-sprite-data");
     localStorage.removeItem("buddy-sprite-frame");
   }
-  localStorage.setItem("buddy-results", JSON.stringify(store.results.slice(0, 30)));
+  localStorage.setItem("buddy-results", JSON.stringify(store.results.slice(0, 300)));
 }
 
 function resize() {
@@ -1596,6 +1596,7 @@ function addMessage(role, text) {
 
 function openSettings() {
   settingsSheet.classList.remove("hidden");
+  renderBackupCount();
   petNameInput.focus();
 }
 
@@ -3374,4 +3375,98 @@ installButton?.addEventListener("click", async () => {
 });
 window.addEventListener("appinstalled", () => {
   installButton?.classList.add("hidden");
+});
+
+const BACKUP_KEYS = [
+  "buddy-name", "buddy-character", "buddy-color",
+  "buddy-daily", "buddy-bond", "buddy-preferences", "buddy-match-prep",
+  "buddy-score", "buddy-results", "buddy-sprite-data", "buddy-sprite-frame",
+  "buddy-wall-rally-best"
+];
+
+function resultKey(item) {
+  return [item.date, item.title, item.type || "", item.good, item.next].join("|");
+}
+
+function renderBackupCount() {
+  const el = document.querySelector("#backupCount");
+  if (!el) return;
+  const matches = store.results.filter(r => (r.type || "practice") === "match").length;
+  const practices = store.results.length - matches;
+  el.textContent = `今この端末に保存: 試合 ${matches}件 / 練習 ${practices}件`;
+}
+
+function exportData() {
+  const data = { app: "atsumare-nanshikimura", version: 1, exportedAt: new Date().toISOString(), store: {} };
+  for (const key of BACKUP_KEYS) {
+    const value = localStorage.getItem(key);
+    if (value !== null) data.store[key] = value;
+  }
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date()).replace(/\//g, "");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nanshikimura-backup-${stamp}.json`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  petSay("記録を書き出したよ。ファイルアプリやiCloudに保存しておくと安心だね。", "happy");
+}
+
+function importData(json) {
+  let data;
+  try {
+    data = JSON.parse(json);
+  } catch {
+    petSay("ファイルを読み込めなかったよ。書き出した.jsonファイルを選んでね。", "sad");
+    return;
+  }
+  const incoming = data?.store;
+  if (!incoming || typeof incoming !== "object") {
+    petSay("このファイルには記録が入っていないみたい。", "sad");
+    return;
+  }
+  // 試合・練習の記録は重複を除いて合算する
+  let incomingResults = [];
+  try {
+    incomingResults = JSON.parse(incoming["buddy-results"] || "[]");
+  } catch {
+    incomingResults = [];
+  }
+  const seen = new Set(store.results.map(resultKey));
+  let added = 0;
+  for (const item of incomingResults) {
+    if (!item || seen.has(resultKey(item))) continue;
+    seen.add(resultKey(item));
+    store.results.push(item);
+    added += 1;
+  }
+  store.results.sort((a, b) => new Date(b.date) - new Date(a.date));
+  // 記録以外のキーは、現在まだ未設定のものだけ取り込む（今の設定を尊重）
+  for (const key of BACKUP_KEYS) {
+    if (key === "buddy-results") continue;
+    if (incoming[key] != null && localStorage.getItem(key) == null) {
+      localStorage.setItem(key, incoming[key]);
+    }
+  }
+  localStorage.setItem("buddy-results", JSON.stringify(store.results.slice(0, 300)));
+  renderResults();
+  renderBackupCount();
+  petSay(added > 0
+    ? `読み込み完了！新しく ${added}件の記録を追加したよ。`
+    : "読み込んだけど、新しい記録はなかったよ（もう全部入ってるみたい）。", "heart");
+}
+
+document.querySelector("#exportData")?.addEventListener("click", exportData);
+document.querySelector("#importData")?.addEventListener("click", () => document.querySelector("#importFile")?.click());
+document.querySelector("#importFile")?.addEventListener("change", event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => importData(String(reader.result));
+  reader.readAsText(file);
+  event.target.value = "";
 });
